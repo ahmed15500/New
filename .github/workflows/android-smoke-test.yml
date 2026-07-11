@@ -48,7 +48,8 @@ jobs:
             adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity
             sleep 8
             adb logcat -d > app-launch-logcat.txt
-            PID=$(adb shell pidof com.ahmed.yawmeyaty | tr -d '\r')
+            adb exec-out screencap -p > app-launch.png
+            PID=$(adb shell pidof com.ahmed.yawmeyaty 2>/dev/null | tr -d '\r' || true)
             echo "Application PID: $PID"
             if [ -z "$PID" ]; then
               echo "Application process stopped after launch."
@@ -57,11 +58,13 @@ jobs:
             fi
             adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" || true
 
-      - name: Upload launch log
+      - name: Upload launch evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-launch-log
-          path: app-launch-logcat.txt
+          name: android-launch-evidence
+          path: |
+            app-launch-logcat.txt
+            app-launch.png
           if-no-files-found: warn
           retention-days: 7
