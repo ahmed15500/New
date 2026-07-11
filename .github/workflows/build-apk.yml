@@ -38,15 +38,28 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build-log.txt
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Yawmeyaty-v1.0.0-debug.apk
-
-      - name: Upload APK
+      - name: Upload build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Yawmeyaty-APK
-          path: Yawmeyaty-v1.0.0-debug.apk
+          name: Midani-Build-Log
+          path: build-log.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Rename APK
+        if: success()
+        run: cp app/build/outputs/apk/debug/app-debug.apk Midani-v2.0.0-debug.apk
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Midani-APK
+          path: Midani-v2.0.0-debug.apk
           if-no-files-found: error
           retention-days: 30
