@@ -48,20 +48,25 @@ jobs:
             adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity
             sleep 8
             adb logcat -d > app-launch-logcat.txt
-            PID=$(adb shell pidof com.ahmed.yawmeyaty | tr -d '\r')
-            echo "Application PID: $PID"
-            if [ -z "$PID" ]; then
-              echo "Application process stopped after launch."
+            adb exec-out screencap -p > app-launch.png
+            if grep -q "FATAL EXCEPTION" app-launch-logcat.txt; then
+              echo "A fatal application crash was detected."
               grep -A120 -B30 -E "FATAL EXCEPTION|AndroidRuntime|Process: com.ahmed.yawmeyaty" app-launch-logcat.txt || true
               exit 1
             fi
-            adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" || true
+            if ! grep -q "Displayed com.ahmed.yawmeyaty/.MainActivity" app-launch-logcat.txt; then
+              echo "MainActivity was not displayed."
+              exit 1
+            fi
+            echo "MainActivity displayed successfully without a fatal crash."
 
-      - name: Upload launch log
+      - name: Upload launch evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-launch-log
-          path: app-launch-logcat.txt
+          name: android-launch-evidence
+          path: |
+            app-launch-logcat.txt
+            app-launch.png
           if-no-files-found: warn
           retention-days: 7
