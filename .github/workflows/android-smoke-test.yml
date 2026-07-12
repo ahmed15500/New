@@ -46,14 +46,14 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
 
-            adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity | tee main-activity-start.txt
+            adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity | tee main-activity-start.txt || true
             sleep 6
-            adb exec-out screencap -p > midani-main.png
+            adb exec-out screencap -p > midani-main.png || true
 
-            adb shell am start -W -n com.ahmed.yawmeyaty/.ListenSaverActivity | tee listen-saver-start.txt
+            adb shell am start -W -n com.ahmed.yawmeyaty/.ListenSaverActivity | tee listen-saver-start.txt || true
             sleep 6
-            adb exec-out screencap -p > listen-saver.png
-            adb logcat -d > app-launch-logcat.txt
+            adb exec-out screencap -p > listen-saver.png || true
+            adb logcat -d > app-launch-logcat.txt || true
 
             if ! grep -q "Status: ok" main-activity-start.txt; then
               echo "MainActivity did not start successfully."
