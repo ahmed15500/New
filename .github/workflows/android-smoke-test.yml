@@ -32,7 +32,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Build and launch on Android 10
+      - name: Build and launch both activities on Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -45,20 +45,33 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-            adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity
-            sleep 8
+
+            adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity | tee main-activity-start.txt
+            sleep 6
+            adb exec-out screencap -p > midani-main.png
+
+            adb shell am start -W -n com.ahmed.yawmeyaty/.ListenSaverActivity | tee listen-saver-start.txt
+            sleep 6
+            adb exec-out screencap -p > listen-saver.png
             adb logcat -d > app-launch-logcat.txt
-            adb exec-out screencap -p > app-launch.png
+
+            if ! grep -q "Status: ok" main-activity-start.txt; then
+              echo "MainActivity did not start successfully."
+              exit 1
+            fi
+
+            if ! grep -q "Status: ok" listen-saver-start.txt; then
+              echo "ListenSaverActivity did not start successfully."
+              exit 1
+            fi
+
             if grep -q "FATAL EXCEPTION" app-launch-logcat.txt; then
               echo "A fatal application crash was detected."
               grep -A120 -B30 -E "FATAL EXCEPTION|AndroidRuntime|Process: com.ahmed.yawmeyaty" app-launch-logcat.txt || true
               exit 1
             fi
-            if ! grep -q "Displayed com.ahmed.yawmeyaty/.MainActivity" app-launch-logcat.txt; then
-              echo "MainActivity was not displayed."
-              exit 1
-            fi
-            echo "MainActivity displayed successfully without a fatal crash."
+
+            echo "MainActivity and ListenSaverActivity opened without a fatal crash."
 
       - name: Upload launch evidence
         if: always()
@@ -67,6 +80,9 @@ jobs:
           name: android-launch-evidence
           path: |
             app-launch-logcat.txt
-            app-launch.png
+            main-activity-start.txt
+            listen-saver-start.txt
+            midani-main.png
+            listen-saver.png
           if-no-files-found: warn
           retention-days: 7
