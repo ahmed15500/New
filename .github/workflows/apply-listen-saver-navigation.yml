@@ -1,0 +1,117 @@
+name: Apply Listen Saver Navigation
+
+on:
+  push:
+    branches: [ agent/listen-saver-v2.1 ]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/listen-saver-v2.1
+
+      - name: Connect Listen Saver to navigation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/ahmed/yawmeyaty/MainActivity.kt')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  'import androidx.compose.material.icons.rounded.Home\n',
+                  'import androidx.compose.material.icons.rounded.Home\nimport androidx.compose.material.icons.rounded.Headphones\n'
+              ),
+              (
+                  'private enum class AppSection(val label: String) {\n    TODAY("اليوم"),\n    FIELD("الميدان"),\n    EXPENSES("المصروفات"),\n    PROJECTS("المشروعات")\n}',
+                  'private enum class AppSection(val label: String) {\n    TODAY("اليوم"),\n    FIELD("الميدان"),\n    EXPENSES("المصروفات"),\n    PROJECTS("المشروعات"),\n    LISTEN("الاستماع")\n}'
+              ),
+              (
+                  '        AppSection.EXPENSES -> AddDialogType.EXPENSE\n        AppSection.PROJECTS -> AddDialogType.TASK\n',
+                  '        AppSection.EXPENSES -> AddDialogType.EXPENSE\n        AppSection.PROJECTS -> AddDialogType.TASK\n        AppSection.LISTEN -> AddDialogType.TASK\n'
+              ),
+              (
+                  '                                    AppSection.EXPENSES -> Icons.Rounded.AttachMoney\n                                    AppSection.PROJECTS -> Icons.Rounded.Folder\n',
+                  '                                    AppSection.EXPENSES -> Icons.Rounded.AttachMoney\n                                    AppSection.PROJECTS -> Icons.Rounded.Folder\n                                    AppSection.LISTEN -> Icons.Rounded.Headphones\n'
+              ),
+              (
+                  '''        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { activeDialog = fabType },
+                modifier = Modifier.navigationBarsPadding(),
+                icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                text = {
+                    Text(
+                        when (fabType) {
+                            AddDialogType.TASK -> "مهمة"
+                            AddDialogType.FIELD_NOTE -> "زيارة"
+                            AddDialogType.EXPENSE -> "مصروف"
+                        }
+                    )
+                }
+            )
+        }
+''',
+                  '''        floatingActionButton = {
+            if (section != AppSection.LISTEN) {
+                ExtendedFloatingActionButton(
+                    onClick = { activeDialog = fabType },
+                    modifier = Modifier.navigationBarsPadding(),
+                    icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                    text = {
+                        Text(
+                            when (fabType) {
+                                AddDialogType.TASK -> "مهمة"
+                                AddDialogType.FIELD_NOTE -> "زيارة"
+                                AddDialogType.EXPENSE -> "مصروف"
+                            }
+                        )
+                    }
+                )
+            }
+        }
+'''
+              ),
+              (
+                  '''            AppSection.PROJECTS -> ProjectsScreen(
+                tasks = tasks,
+                notes = notes,
+                expenses = expenses,
+                modifier = Modifier.padding(innerPadding)
+            )
+''',
+                  '''            AppSection.PROJECTS -> ProjectsScreen(
+                tasks = tasks,
+                notes = notes,
+                expenses = expenses,
+                modifier = Modifier.padding(innerPadding)
+            )
+
+            AppSection.LISTEN -> ListenSaverScreen(
+                modifier = Modifier.padding(innerPadding)
+            )
+'''
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected source fragment not found:\n{old[:180]}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/ahmed/yawmeyaty/MainActivity.kt
+          git commit -m "Connect Listen Saver navigation"
+          git push origin HEAD:agent/listen-saver-v2.1
