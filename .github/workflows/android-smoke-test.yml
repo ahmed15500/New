@@ -32,7 +32,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Build and launch Islamic Quiz on Android 10
+      - name: Build and launch synced Islamic Quiz on Android 10
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -46,15 +46,15 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-            adb shell am start -W -n com.ahmed.yawmeyaty/.QuizGameActivity | tee activity-start.txt || true
-            sleep 8
-            adb exec-out screencap -p > islamic-quiz-home.png || true
+            adb shell am start -W -n com.ahmed.yawmeyaty/.OnlineQuizActivity | tee activity-start.txt || true
+            sleep 10
+            adb exec-out screencap -p > islamic-quiz-online-home.png || true
             adb logcat -d > app-launch-logcat.txt || true
 
       - name: Verify launch evidence
         run: |
           if ! grep -q "Status: ok" activity-start.txt; then
-            echo "QuizGameActivity did not start successfully."
+            echo "OnlineQuizActivity did not start successfully."
             exit 1
           fi
 
@@ -64,7 +64,7 @@ jobs:
             exit 1
           fi
 
-          echo "Islamic Quiz 3.1.0 opened without a fatal crash."
+          echo "Islamic Quiz 3.2.0 opened without a fatal crash."
 
       - name: Upload launch evidence
         if: always()
@@ -74,6 +74,6 @@ jobs:
           path: |
             app-launch-logcat.txt
             activity-start.txt
-            islamic-quiz-home.png
+            islamic-quiz-online-home.png
           if-no-files-found: warn
           retention-days: 7
