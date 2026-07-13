@@ -33,6 +33,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Build and launch Islamic Quiz on Android 10
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -45,24 +46,25 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-
             adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity | tee activity-start.txt || true
             sleep 8
             adb exec-out screencap -p > islamic-quiz-home.png || true
             adb logcat -d > app-launch-logcat.txt || true
 
-            if ! grep -q "Status: ok" activity-start.txt; then
-              echo "MainActivity did not start successfully."
-              exit 1
-            fi
+      - name: Verify launch evidence
+        run: |
+          if ! grep -q "Status: ok" activity-start.txt; then
+            echo "MainActivity did not start successfully."
+            exit 1
+          fi
 
-            if grep -q "FATAL EXCEPTION" app-launch-logcat.txt; then
-              echo "A fatal application crash was detected."
-              grep -A120 -B30 -E "FATAL EXCEPTION|AndroidRuntime|Process: com.ahmed.yawmeyaty" app-launch-logcat.txt || true
-              exit 1
-            fi
+          if grep -q "FATAL EXCEPTION" app-launch-logcat.txt; then
+            echo "A fatal application crash was detected."
+            grep -A120 -B30 -E "FATAL EXCEPTION|AndroidRuntime|Process: com.ahmed.yawmeyaty" app-launch-logcat.txt || true
+            exit 1
+          fi
 
-            echo "Islamic Quiz opened without a fatal crash."
+          echo "Islamic Quiz opened without a fatal crash."
 
       - name: Upload launch evidence
         if: always()
