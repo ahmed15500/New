@@ -2,9 +2,10 @@ package com.ahmed.yawmeyaty
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,49 +16,37 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AttachMoney
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.RadioButtonUnchecked
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,19 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ahmed.yawmeyaty.data.TaskRepository
-import com.ahmed.yawmeyaty.model.ExpenseEntry
-import com.ahmed.yawmeyaty.model.FieldNote
-import com.ahmed.yawmeyaty.model.TaskPriority
-import com.ahmed.yawmeyaty.model.WorkProject
-import com.ahmed.yawmeyaty.model.WorkTask
 import com.ahmed.yawmeyaty.ui.theme.YawmeyatyTheme
-import java.text.NumberFormat
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,428 +69,152 @@ class MainActivity : ComponentActivity() {
         setContent {
             YawmeyatyTheme {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    MidaniApp(repository = remember { TaskRepository(applicationContext) })
+                    IslamicQuizGame()
                 }
             }
         }
     }
 }
 
-private enum class AppSection(val label: String) {
-    TODAY("اليوم"),
-    FIELD("الميدان"),
-    EXPENSES("المصروفات"),
-    PROJECTS("المشروعات")
+private enum class GameScreen {
+    HOME,
+    QUIZ,
+    RESULT
 }
 
-private enum class AddDialogType {
-    TASK,
-    FIELD_NOTE,
-    EXPENSE
-}
+private data class QuizQuestion(
+    val question: String,
+    val options: List<String>,
+    val correctAnswer: Int,
+    val explanation: String
+)
 
-private enum class DueOption(val label: String, val daysFromToday: Long?) {
-    TODAY("اليوم", 0),
-    TOMORROW("غدًا", 1),
-    THIS_WEEK("خلال أسبوع", 7),
-    NO_DATE("بدون موعد", null)
-}
+private data class QuizCategory(
+    val title: String,
+    val emoji: String,
+    val description: String,
+    val questions: List<QuizQuestion>
+)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MidaniApp(repository: TaskRepository) {
-    var section by remember { mutableStateOf(AppSection.TODAY) }
-    var tasks by remember { mutableStateOf(repository.loadTasks()) }
-    var notes by remember { mutableStateOf(repository.loadFieldNotes()) }
-    var expenses by remember { mutableStateOf(repository.loadExpenses()) }
-    var activeDialog by remember { mutableStateOf<AddDialogType?>(null) }
+private fun IslamicQuizGame() {
+    var screen by remember { mutableStateOf(GameScreen.HOME) }
+    var selectedCategory by remember { mutableStateOf<QuizCategory?>(null) }
+    var questions by remember { mutableStateOf(emptyList<QuizQuestion>()) }
+    var questionIndex by remember { mutableIntStateOf(0) }
+    var score by remember { mutableIntStateOf(0) }
+    var selectedAnswer by remember { mutableStateOf<Int?>(null) }
 
-    fun reloadTasks() {
-        tasks = repository.loadTasks()
+    fun startCategory(category: QuizCategory) {
+        selectedCategory = category
+        questions = category.questions.shuffled()
+        questionIndex = 0
+        score = 0
+        selectedAnswer = null
+        screen = GameScreen.QUIZ
     }
 
-    fun reloadNotes() {
-        notes = repository.loadFieldNotes()
+    fun returnHome() {
+        screen = GameScreen.HOME
+        selectedCategory = null
+        questions = emptyList()
+        questionIndex = 0
+        score = 0
+        selectedAnswer = null
     }
 
-    fun reloadExpenses() {
-        expenses = repository.loadExpenses()
+    BackHandler(enabled = screen != GameScreen.HOME) {
+        returnHome()
     }
 
-    val fabType = when (section) {
-        AppSection.TODAY -> AddDialogType.TASK
-        AppSection.FIELD -> AddDialogType.FIELD_NOTE
-        AppSection.EXPENSES -> AddDialogType.EXPENSE
-        AppSection.PROJECTS -> AddDialogType.TASK
-    }
+    Surface(modifier = Modifier.fillMaxSize()) {
+        when (screen) {
+            GameScreen.HOME -> HomeScreen(onCategorySelected = ::startCategory)
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("ميداني", fontWeight = FontWeight.Black)
-                        Text(
-                            text = section.label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            NavigationBar {
-                AppSection.entries.forEach { item ->
-                    NavigationBarItem(
-                        selected = item == section,
-                        onClick = { section = item },
-                        icon = {
-                            Icon(
-                                imageVector = when (item) {
-                                    AppSection.TODAY -> Icons.Rounded.Home
-                                    AppSection.FIELD -> Icons.Rounded.LocationOn
-                                    AppSection.EXPENSES -> Icons.Rounded.AttachMoney
-                                    AppSection.PROJECTS -> Icons.Rounded.Folder
-                                },
-                                contentDescription = item.label
-                            )
+            GameScreen.QUIZ -> {
+                val category = selectedCategory
+                if (category != null && questions.isNotEmpty()) {
+                    QuizScreen(
+                        category = category,
+                        question = questions[questionIndex],
+                        questionIndex = questionIndex,
+                        totalQuestions = questions.size,
+                        score = score,
+                        selectedAnswer = selectedAnswer,
+                        onBack = ::returnHome,
+                        onAnswer = { answerIndex ->
+                            if (selectedAnswer == null) {
+                                selectedAnswer = answerIndex
+                                if (answerIndex == questions[questionIndex].correctAnswer) {
+                                    score += 1
+                                }
+                            }
                         },
-                        label = { Text(item.label) }
-                    )
-                }
-            }
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { activeDialog = fabType },
-                modifier = Modifier.navigationBarsPadding(),
-                icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                text = {
-                    Text(
-                        when (fabType) {
-                            AddDialogType.TASK -> "مهمة"
-                            AddDialogType.FIELD_NOTE -> "زيارة"
-                            AddDialogType.EXPENSE -> "مصروف"
+                        onNext = {
+                            if (questionIndex == questions.lastIndex) {
+                                screen = GameScreen.RESULT
+                            } else {
+                                questionIndex += 1
+                                selectedAnswer = null
+                            }
                         }
                     )
                 }
-            )
-        }
-    ) { innerPadding ->
-        when (section) {
-            AppSection.TODAY -> TodayScreen(
-                tasks = tasks,
-                expenses = expenses,
-                modifier = Modifier.padding(innerPadding),
-                onToggle = { id ->
-                    repository.toggleTask(id)
-                    reloadTasks()
-                },
-                onDelete = { id ->
-                    repository.deleteTask(id)
-                    reloadTasks()
-                }
-            )
-
-            AppSection.FIELD -> FieldScreen(
-                notes = notes,
-                modifier = Modifier.padding(innerPadding),
-                onDelete = { id ->
-                    repository.deleteFieldNote(id)
-                    reloadNotes()
-                }
-            )
-
-            AppSection.EXPENSES -> ExpensesScreen(
-                expenses = expenses,
-                modifier = Modifier.padding(innerPadding),
-                onDelete = { id ->
-                    repository.deleteExpense(id)
-                    reloadExpenses()
-                }
-            )
-
-            AppSection.PROJECTS -> ProjectsScreen(
-                tasks = tasks,
-                notes = notes,
-                expenses = expenses,
-                modifier = Modifier.padding(innerPadding)
-            )
-        }
-    }
-
-    when (activeDialog) {
-        AddDialogType.TASK -> AddTaskDialog(
-            onDismiss = { activeDialog = null },
-            onAdd = { title, project, priority, dueDate ->
-                repository.addTask(title, project, priority, dueDate)
-                reloadTasks()
-                activeDialog = null
             }
-        )
 
-        AddDialogType.FIELD_NOTE -> AddFieldNoteDialog(
-            onDismiss = { activeDialog = null },
-            onAdd = { village, project, note, beneficiaries ->
-                repository.addFieldNote(village, project, note, beneficiaries)
-                reloadNotes()
-                activeDialog = null
-            }
-        )
-
-        AddDialogType.EXPENSE -> AddExpenseDialog(
-            onDismiss = { activeDialog = null },
-            onAdd = { description, amount, project ->
-                repository.addExpense(description, amount, project)
-                reloadExpenses()
-                activeDialog = null
-            }
-        )
-
-        null -> Unit
-    }
-}
-
-@Composable
-private fun TodayScreen(
-    tasks: List<WorkTask>,
-    expenses: List<ExpenseEntry>,
-    modifier: Modifier = Modifier,
-    onToggle: (String) -> Unit,
-    onDelete: (String) -> Unit
-) {
-    val today = LocalDate.now()
-    val completed = tasks.count { it.completed }
-    val pending = tasks.size - completed
-    val todayExpenses = expenses
-        .filter { epochToDate(it.createdAt) == today }
-        .sumOf { it.amount }
-
-    val sortedTasks = tasks.sortedWith(
-        compareBy<WorkTask> { it.completed }
-            .thenByDescending { it.priority.rank }
-            .thenBy { it.dueDate ?: "9999-12-31" }
-    )
-
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 110.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Text(
-                text = arabicDate(today),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "ركّز على المهم وسجّل ما يحدث في الميدان",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black
-            )
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SummaryCard(
-                    title = "متبقي",
-                    value = pending.toString(),
-                    emoji = "⏳",
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryCard(
-                    title = "مكتمل",
-                    value = completed.toString(),
-                    emoji = "✅",
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryCard(
-                    title = "مصروف اليوم",
-                    value = compactAmount(todayExpenses),
-                    emoji = "💰",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        item {
-            SectionTitle(
-                title = "مهامك",
-                subtitle = if (pending > 0) "$pending مهام تحتاج متابعة" else "كل المهام مكتملة"
-            )
-        }
-
-        if (sortedTasks.isEmpty()) {
-            item {
-                EmptyState(
-                    emoji = "🗂️",
-                    title = "لا توجد مهام",
-                    subtitle = "اضغط زر الإضافة وسجّل أول مهمة"
-                )
-            }
-        } else {
-            items(items = sortedTasks, key = { it.id }) { task ->
-                WorkTaskCard(task = task, onToggle = onToggle, onDelete = onDelete)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryCard(
-    title: String,
-    value: String,
-    emoji: String,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(emoji, fontSize = 24.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-            Text(
-                title,
-                style = MaterialTheme.typography.labelSmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SectionTitle(title: String, subtitle: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-        Text(
-            subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun WorkTaskCard(
-    task: WorkTask,
-    onToggle: (String) -> Unit,
-    onDelete: (String) -> Unit
-) {
-    val overdue = isOverdue(task.dueDate) && !task.completed
-    val priorityColor = when (task.priority) {
-        TaskPriority.HIGH -> MaterialTheme.colorScheme.error
-        TaskPriority.MEDIUM -> Color(0xFFD47700)
-        TaskPriority.LOW -> MaterialTheme.colorScheme.primary
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (task.completed) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (task.completed) 0.dp else 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = task.completed,
-                onCheckedChange = { onToggle(task.id) }
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(task.project.emoji, fontSize = 24.sp)
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (task.completed) {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
-                )
-                Text(
-                    text = "${task.project.label} • ${task.priority.label}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = priorityColor
-                )
-                task.dueDate?.let { date ->
-                    Text(
-                        text = if (overdue) "متأخرة • ${dueDateLabel(date)}" else dueDateLabel(date),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (overdue) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+            GameScreen.RESULT -> {
+                val category = selectedCategory
+                if (category != null) {
+                    ResultScreen(
+                        category = category,
+                        score = score,
+                        totalQuestions = questions.size,
+                        onReplay = { startCategory(category) },
+                        onHome = ::returnHome
                     )
                 }
             }
-            IconButton(onClick = { onDelete(task.id) }) {
-                Icon(
-                    Icons.Rounded.DeleteOutline,
-                    contentDescription = "حذف المهمة",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-            Icon(
-                imageVector = if (task.completed) {
-                    Icons.Rounded.CheckCircle
-                } else {
-                    Icons.Rounded.RadioButtonUnchecked
-                },
-                contentDescription = null,
-                tint = if (task.completed) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.outline
-                }
-            )
         }
     }
 }
 
 @Composable
-private fun FieldScreen(
-    notes: List<FieldNote>,
-    modifier: Modifier = Modifier,
-    onDelete: (String) -> Unit
-) {
-    val totalBeneficiaries = notes.sumOf { it.beneficiaries }
+private fun HomeScreen(onCategorySelected: (QuizCategory) -> Unit) {
+    val categories = remember { quizCategories() }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 110.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text(
-                text = "سجل الميدان",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = "وثّق الزيارات والملاحظات وعدد المستفيدين فورًا",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    modifier = Modifier.size(88.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("☪️", fontSize = 48.sp)
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "اختبر معلوماتك الإسلامية",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "اختر قسمًا وأجب عن 5 أسئلة",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
 
         item {
@@ -521,193 +222,256 @@ private fun FieldScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                SummaryCard(
-                    title = "زيارات مسجلة",
-                    value = notes.size.toString(),
-                    emoji = "📍",
+                MiniStatCard(
+                    emoji = "📚",
+                    value = "5",
+                    label = "أقسام",
                     modifier = Modifier.weight(1f)
                 )
-                SummaryCard(
-                    title = "مستفيدون",
-                    value = totalBeneficiaries.toString(),
-                    emoji = "👥",
+                MiniStatCard(
+                    emoji = "❓",
+                    value = "25",
+                    label = "سؤالًا",
+                    modifier = Modifier.weight(1f)
+                )
+                MiniStatCard(
+                    emoji = "🏆",
+                    value = "5",
+                    label = "نقاط لكل قسم",
                     modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        if (notes.isEmpty()) {
-            item {
-                EmptyState(
-                    emoji = "📝",
-                    title = "لا توجد زيارات مسجلة",
-                    subtitle = "سجّل القرية والمشروع وأهم ما حدث"
-                )
-            }
-        } else {
-            items(notes.sortedByDescending { it.createdAt }, key = { it.id }) { note ->
-                FieldNoteCard(note = note, onDelete = onDelete)
-            }
+        item {
+            Text(
+                text = "اختر نوع الأسئلة",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        items(categories, key = { it.title }) { category ->
+            CategoryCard(category = category, onClick = { onCategorySelected(category) })
         }
     }
 }
 
 @Composable
-private fun FieldNoteCard(note: FieldNote, onDelete: (String) -> Unit) {
+private fun MiniStatCard(
+    emoji: String,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(emoji, fontSize = 22.sp)
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryCard(category: QuizCategory, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(60.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(46.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("📍", fontSize = 22.sp)
-                    }
-                }
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(note.village, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        "${note.project.emoji} ${note.project.label}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = { onDelete(note.id) }) {
-                    Icon(
-                        Icons.Rounded.DeleteOutline,
-                        contentDescription = "حذف الزيارة",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                Box(contentAlignment = Alignment.Center) {
+                    Text(category.emoji, fontSize = 32.sp)
                 }
             }
-
-            Spacer(Modifier.height(10.dp))
-            Text(note.note, style = MaterialTheme.typography.bodyLarge)
-
-            Spacer(Modifier.height(10.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = dateTimeLabel(note.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
+                    text = category.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = category.description,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (note.beneficiaries > 0) {
-                    Text(
-                        text = "${note.beneficiaries} مستفيد",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
+                Text(
+                    text = "5 أسئلة",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
             }
+            Text("←", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExpensesScreen(
-    expenses: List<ExpenseEntry>,
-    modifier: Modifier = Modifier,
-    onDelete: (String) -> Unit
+private fun QuizScreen(
+    category: QuizCategory,
+    question: QuizQuestion,
+    questionIndex: Int,
+    totalQuestions: Int,
+    score: Int,
+    selectedAnswer: Int?,
+    onBack: () -> Unit,
+    onAnswer: (Int) -> Unit,
+    onNext: () -> Unit
 ) {
-    val total = expenses.sumOf { it.amount }
+    val answered = selectedAnswer != null
+    val isCorrect = selectedAnswer == question.correctAnswer
+    val progress = (questionIndex + 1).toFloat() / totalQuestions.toFloat()
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 110.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Text(
-                text = "المصروفات",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = "سجّل المصروف وقت حدوثه حتى لا تضيع الإيصالات",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text("إجمالي المصروفات المسجلة", style = MaterialTheme.typography.titleMedium)
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Rounded.ArrowBack, contentDescription = "العودة")
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(category.title, fontWeight = FontWeight.Black)
                     Text(
-                        formatAmount(total),
-                        style = MaterialTheme.typography.headlineMedium,
+                        "السؤال ${questionIndex + 1} من $totalQuestions",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "⭐ $score",
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         fontWeight = FontWeight.Black
                     )
                 }
             }
         }
-
-        if (expenses.isEmpty()) {
-            item {
-                EmptyState(
-                    emoji = "🧾",
-                    title = "لا توجد مصروفات",
-                    subtitle = "أضف الوصف والمبلغ والمشروع"
-                )
-            }
-        } else {
-            items(expenses.sortedByDescending { it.createdAt }, key = { it.id }) { expense ->
-                ExpenseCard(expense = expense, onDelete = onDelete)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExpenseCard(expense: ExpenseEntry, onDelete: (String) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.size(46.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("🧾", fontSize = 22.sp)
+            item {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().height(10.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(category.emoji, fontSize = 44.sp)
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = question.question,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Black,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(expense.description, fontWeight = FontWeight.Bold)
-                Text(
-                    "${expense.project.emoji} ${expense.project.label} • ${dateTimeLabel(expense.createdAt)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+
+            items(question.options.indices.toList()) { optionIndex ->
+                AnswerButton(
+                    text = question.options[optionIndex],
+                    optionIndex = optionIndex,
+                    correctAnswer = question.correctAnswer,
+                    selectedAnswer = selectedAnswer,
+                    onClick = { onAnswer(optionIndex) }
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    formatAmount(expense.amount),
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                IconButton(onClick = { onDelete(expense.id) }) {
-                    Icon(
-                        Icons.Rounded.DeleteOutline,
-                        contentDescription = "حذف المصروف",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+
+            if (answered) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isCorrect) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.errorContainer
+                            }
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Rounded.CheckCircle,
+                                    contentDescription = null,
+                                    tint = if (isCorrect) {
+                                        MaterialTheme.colorScheme.secondary
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    }
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = if (isCorrect) "إجابة صحيحة!" else "الإجابة الصحيحة: ${question.options[question.correctAnswer]}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(question.explanation, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+
+                item {
+                    Button(
+                        onClick = onNext,
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text(
+                            text = if (questionIndex == totalQuestions - 1) "عرض النتيجة" else "السؤال التالي",
+                            fontWeight = FontWeight.Black
+                        )
+                    }
                 }
             }
         }
@@ -715,366 +479,310 @@ private fun ExpenseCard(expense: ExpenseEntry, onDelete: (String) -> Unit) {
 }
 
 @Composable
-private fun ProjectsScreen(
-    tasks: List<WorkTask>,
-    notes: List<FieldNote>,
-    expenses: List<ExpenseEntry>,
-    modifier: Modifier = Modifier
+private fun AnswerButton(
+    text: String,
+    optionIndex: Int,
+    correctAnswer: Int,
+    selectedAnswer: Int?,
+    onClick: () -> Unit
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 110.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Text(
-                text = "لوحة المشروعات",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = "ملخص سريع للمهام والزيارات والمصروفات حسب المشروع",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        items(WorkProject.entries, key = { it.name }) { project ->
-            val projectTasks = tasks.filter { it.project == project }
-            val completedTasks = projectTasks.count { it.completed }
-            val projectNotes = notes.count { it.project == project }
-            val projectExpenses = expenses.filter { it.project == project }.sumOf { it.amount }
-            val progress = if (projectTasks.isEmpty()) 0f
-            else completedTasks.toFloat() / projectTasks.size.toFloat()
-
-            ProjectCard(
-                project = project,
-                tasks = projectTasks.size,
-                completed = completedTasks,
-                visits = projectNotes,
-                expenses = projectExpenses,
-                progress = progress
-            )
-        }
+    val answered = selectedAnswer != null
+    val containerColor = when {
+        answered && optionIndex == correctAnswer -> MaterialTheme.colorScheme.secondaryContainer
+        answered && optionIndex == selectedAnswer && optionIndex != correctAnswer -> MaterialTheme.colorScheme.errorContainer
+        else -> Color.Transparent
     }
-}
 
-@Composable
-private fun ProjectCard(
-    project: WorkProject,
-    tasks: Int,
-    completed: Int,
-    visits: Int,
-    expenses: Double,
-    progress: Float
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    OutlinedButton(
+        onClick = onClick,
+        enabled = !answered,
+        modifier = Modifier.fillMaxWidth().height(58.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = containerColor,
+            disabledContainerColor = containerColor,
+            disabledContentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(project.emoji, fontSize = 30.sp)
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(project.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                    Text(
-                        "$completed من $tasks مهام مكتملة",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    "${(progress * 100).toInt()}٪",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.primaryContainer
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("📍 $visits زيارات", style = MaterialTheme.typography.labelMedium)
-                Text("💰 ${compactAmount(expenses)}", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(emoji: String, title: String, subtitle: String) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 44.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(emoji, fontSize = 48.sp)
-        Spacer(Modifier.height(10.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
-            subtitle,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = text,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Start,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
 @Composable
-private fun AddTaskDialog(
-    onDismiss: () -> Unit,
-    onAdd: (String, WorkProject, TaskPriority, LocalDate?) -> Unit
+private fun ResultScreen(
+    category: QuizCategory,
+    score: Int,
+    totalQuestions: Int,
+    onReplay: () -> Unit,
+    onHome: () -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var project by remember { mutableStateOf(WorkProject.GENERAL) }
-    var priority by remember { mutableStateOf(TaskPriority.MEDIUM) }
-    var dueOption by remember { mutableStateOf(DueOption.TODAY) }
+    val percentage = if (totalQuestions == 0) 0 else score * 100 / totalQuestions
+    val message = when {
+        percentage == 100 -> "ما شاء الله! إجابات كاملة"
+        percentage >= 80 -> "ممتاز جدًا! معلوماتك قوية"
+        percentage >= 60 -> "جيد جدًا، استمر في التعلم"
+        percentage >= 40 -> "بداية جيدة، جرّب مرة أخرى"
+        else -> "لا بأس، التعلم بالمحاولة"
+    }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("إضافة مهمة", fontWeight = FontWeight.Black) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("المهمة") },
-                    placeholder = { Text("مثال: متابعة تقرير المشروع") },
-                    singleLine = true
-                )
-                Spacer(Modifier.height(14.dp))
-                SelectorLabel("المشروع")
-                ProjectSelector(selected = project, onSelected = { project = it })
-                Spacer(Modifier.height(14.dp))
-                SelectorLabel("الأولوية")
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TaskPriority.entries.forEach { item ->
-                        FilterChip(
-                            selected = item == priority,
-                            onClick = { priority = item },
-                            label = { Text(item.label) }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(14.dp))
-                SelectorLabel("الموعد")
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    DueOption.entries.forEach { item ->
-                        FilterChip(
-                            selected = item == dueOption,
-                            onClick = { dueOption = item },
-                            label = { Text(item.label) }
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = title.isNotBlank(),
-                onClick = {
-                    val dueDate = dueOption.daysFromToday?.let { LocalDate.now().plusDays(it) }
-                    onAdd(title, project, priority, dueDate)
-                }
-            ) {
-                Text("حفظ")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("إلغاء") }
-        }
-    )
-}
-
-@Composable
-private fun AddFieldNoteDialog(
-    onDismiss: () -> Unit,
-    onAdd: (String, WorkProject, String, Int) -> Unit
-) {
-    var village by remember { mutableStateOf("") }
-    var project by remember { mutableStateOf(WorkProject.VILLAGES_13) }
-    var note by remember { mutableStateOf("") }
-    var beneficiaries by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("تسجيل زيارة ميدانية", fontWeight = FontWeight.Black) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                OutlinedTextField(
-                    value = village,
-                    onValueChange = { village = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("القرية أو المكان") },
-                    singleLine = true
-                )
-                Spacer(Modifier.height(12.dp))
-                SelectorLabel("المشروع")
-                ProjectSelector(selected = project, onSelected = { project = it })
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("ماذا حدث؟") },
-                    minLines = 3
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = beneficiaries,
-                    onValueChange = { value ->
-                        beneficiaries = value.filter { it.isDigit() }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("عدد المستفيدين — اختياري") },
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = village.isNotBlank() && note.isNotBlank(),
-                onClick = {
-                    onAdd(village, project, note, beneficiaries.toIntOrNull() ?: 0)
-                }
-            ) {
-                Text("حفظ")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("إلغاء") }
-        }
-    )
-}
-
-@Composable
-private fun AddExpenseDialog(
-    onDismiss: () -> Unit,
-    onAdd: (String, Double, WorkProject) -> Unit
-) {
-    var description by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var project by remember { mutableStateOf(WorkProject.GENERAL) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("تسجيل مصروف", fontWeight = FontWeight.Black) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("وصف المصروف") },
-                    placeholder = { Text("مثال: انتقالات الزيارة") },
-                    singleLine = true
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { value ->
-                        amount = value.filter { it.isDigit() || it == '.' || it == ',' }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("المبلغ بالجنيه") },
-                    singleLine = true
-                )
-                Spacer(Modifier.height(12.dp))
-                SelectorLabel("المشروع")
-                ProjectSelector(selected = project, onSelected = { project = it })
-            }
-        },
-        confirmButton = {
-            val parsedAmount = amount.replace(',', '.').toDoubleOrNull()
-            TextButton(
-                enabled = description.isNotBlank() && parsedAmount != null && parsedAmount > 0,
-                onClick = {
-                    onAdd(description, parsedAmount ?: 0.0, project)
-                }
-            ) {
-                Text("حفظ")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("إلغاء") }
-        }
-    )
-}
-
-@Composable
-private fun SelectorLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-    Spacer(Modifier.height(6.dp))
-}
-
-@Composable
-private fun ProjectSelector(
-    selected: WorkProject,
-    onSelected: (WorkProject) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        WorkProject.entries.forEach { item ->
-            FilterChip(
-                selected = item == selected,
-                onClick = { onSelected(item) },
-                label = { Text("${item.emoji} ${item.label}") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+        Surface(
+            modifier = Modifier.size(120.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    modifier = Modifier.size(68.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-            )
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = "انتهى قسم ${category.title}",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "$score / $totalQuestions",
+            style = MaterialTheme.typography.displayMedium,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "$percentage٪",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(28.dp))
+        Button(
+            onClick = onReplay,
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Icon(Icons.Rounded.Refresh, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("إعادة اللعب", fontWeight = FontWeight.Black)
+        }
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = onHome,
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Icon(Icons.Rounded.Home, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("اختيار قسم آخر", fontWeight = FontWeight.Black)
         }
     }
 }
 
-private fun arabicDate(date: LocalDate): String =
-    date.format(DateTimeFormatter.ofPattern("EEEE، d MMMM yyyy", Locale("ar", "EG")))
-
-private fun epochToDate(epochMillis: Long): LocalDate =
-    Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
-
-private fun dateTimeLabel(epochMillis: Long): String {
-    val value = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
-    return value.format(DateTimeFormatter.ofPattern("d MMM، h:mm a", Locale("ar", "EG")))
-}
-
-private fun dueDateLabel(rawDate: String): String {
-    val date = runCatching { LocalDate.parse(rawDate) }.getOrNull() ?: return rawDate
-    val today = LocalDate.now()
-    return when (date) {
-        today -> "اليوم"
-        today.plusDays(1) -> "غدًا"
-        else -> date.format(DateTimeFormatter.ofPattern("d MMMM", Locale("ar", "EG")))
-    }
-}
-
-private fun isOverdue(rawDate: String?): Boolean {
-    val date = rawDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return false
-    return date.isBefore(LocalDate.now())
-}
-
-private fun formatAmount(amount: Double): String =
-    "${NumberFormat.getNumberInstance(Locale("ar", "EG")).format(amount)} ج.م"
-
-private fun compactAmount(amount: Double): String {
-    if (amount <= 0.0) return "0"
-    return when {
-        amount >= 1_000_000 -> "${(amount / 1_000_000).toInt()}م"
-        amount >= 1_000 -> "${(amount / 1_000).toInt()}ك"
-        else -> NumberFormat.getNumberInstance(Locale("ar", "EG")).format(amount)
-    }
-}
+private fun quizCategories(): List<QuizCategory> = listOf(
+    QuizCategory(
+        title = "القرآن الكريم",
+        emoji = "📖",
+        description = "السور وأجزاء القرآن ومعلومات أساسية",
+        questions = listOf(
+            QuizQuestion(
+                question = "ما أول سورة في ترتيب المصحف؟",
+                options = listOf("سورة البقرة", "سورة الفاتحة", "سورة الناس", "سورة الإخلاص"),
+                correctAnswer = 1,
+                explanation = "سورة الفاتحة هي السورة الأولى في ترتيب المصحف الشريف."
+            ),
+            QuizQuestion(
+                question = "ما أطول سورة في القرآن الكريم؟",
+                options = listOf("سورة آل عمران", "سورة النساء", "سورة البقرة", "سورة المائدة"),
+                correctAnswer = 2,
+                explanation = "سورة البقرة هي أطول سور القرآن الكريم، وعدد آياتها 286 آية."
+            ),
+            QuizQuestion(
+                question = "كم عدد أجزاء القرآن الكريم؟",
+                options = listOf("20 جزءًا", "25 جزءًا", "30 جزءًا", "40 جزءًا"),
+                correctAnswer = 2,
+                explanation = "القرآن الكريم مقسّم إلى ثلاثين جزءًا."
+            ),
+            QuizQuestion(
+                question = "ما السورة التي لا تبدأ بالبسملة؟",
+                options = listOf("سورة الأنفال", "سورة التوبة", "سورة يونس", "سورة هود"),
+                correctAnswer = 1,
+                explanation = "سورة التوبة هي السورة الوحيدة التي لا تبدأ ببسم الله الرحمن الرحيم."
+            ),
+            QuizQuestion(
+                question = "في أي سورة وردت البسملة مرتين؟",
+                options = listOf("سورة النمل", "سورة مريم", "سورة يس", "سورة الرحمن"),
+                correctAnswer = 0,
+                explanation = "وردت البسملة في بداية سورة النمل، ووردت مرة أخرى في رسالة سليمان عليه السلام."
+            )
+        )
+    ),
+    QuizCategory(
+        title = "الأنبياء",
+        emoji = "🌟",
+        description = "قصص الأنبياء وألقابهم ومواقفهم",
+        questions = listOf(
+            QuizQuestion(
+                question = "من أول الأنبياء؟",
+                options = listOf("نوح عليه السلام", "إبراهيم عليه السلام", "آدم عليه السلام", "موسى عليه السلام"),
+                correctAnswer = 2,
+                explanation = "آدم عليه السلام هو أول البشر وأول الأنبياء."
+            ),
+            QuizQuestion(
+                question = "من النبي الذي ابتلعه الحوت؟",
+                options = listOf("يونس عليه السلام", "يوسف عليه السلام", "أيوب عليه السلام", "هود عليه السلام"),
+                correctAnswer = 0,
+                explanation = "ابتلع الحوت نبي الله يونس عليه السلام، فدعا الله في الظلمات فنجّاه."
+            ),
+            QuizQuestion(
+                question = "من النبي الذي صنع السفينة بأمر الله؟",
+                options = listOf("صالح عليه السلام", "نوح عليه السلام", "لوط عليه السلام", "شعيب عليه السلام"),
+                correctAnswer = 1,
+                explanation = "أمر الله نوحًا عليه السلام أن يصنع السفينة لينجو المؤمنون من الطوفان."
+            ),
+            QuizQuestion(
+                question = "من النبي الملقب بكليم الله؟",
+                options = listOf("عيسى عليه السلام", "داود عليه السلام", "موسى عليه السلام", "إسماعيل عليه السلام"),
+                correctAnswer = 2,
+                explanation = "موسى عليه السلام هو كليم الله؛ لأن الله كلّمه تكليمًا."
+            ),
+            QuizQuestion(
+                question = "من النبي المعروف بأبي الأنبياء؟",
+                options = listOf("إبراهيم عليه السلام", "يعقوب عليه السلام", "زكريا عليه السلام", "إدريس عليه السلام"),
+                correctAnswer = 0,
+                explanation = "إبراهيم عليه السلام يُعرف بأبي الأنبياء؛ لأن كثيرًا من الأنبياء جاءوا من ذريته."
+            )
+        )
+    ),
+    QuizCategory(
+        title = "السيرة النبوية",
+        emoji = "🕌",
+        description = "حياة النبي ﷺ والهجرة وبداية الوحي",
+        questions = listOf(
+            QuizQuestion(
+                question = "أين وُلد النبي محمد ﷺ؟",
+                options = listOf("المدينة المنورة", "مكة المكرمة", "الطائف", "القدس"),
+                correctAnswer = 1,
+                explanation = "وُلد النبي محمد ﷺ في مكة المكرمة."
+            ),
+            QuizQuestion(
+                question = "إلى أي مدينة هاجر النبي ﷺ؟",
+                options = listOf("الطائف", "دمشق", "المدينة المنورة", "بيت المقدس"),
+                correctAnswer = 2,
+                explanation = "هاجر النبي ﷺ من مكة إلى المدينة المنورة."
+            ),
+            QuizQuestion(
+                question = "ما اسم الغار الذي اختبأ فيه النبي ﷺ أثناء الهجرة؟",
+                options = listOf("غار حراء", "غار ثور", "غار أحد", "غار بدر"),
+                correctAnswer = 1,
+                explanation = "مكث النبي ﷺ وأبو بكر رضي الله عنه في غار ثور أثناء الهجرة."
+            ),
+            QuizQuestion(
+                question = "من أول زوجات النبي ﷺ؟",
+                options = listOf("عائشة رضي الله عنها", "حفصة رضي الله عنها", "خديجة رضي الله عنها", "أم سلمة رضي الله عنها"),
+                correctAnswer = 2,
+                explanation = "خديجة بنت خويلد رضي الله عنها هي أول زوجات النبي ﷺ وأول من آمن به."
+            ),
+            QuizQuestion(
+                question = "كم كان عمر النبي ﷺ عندما بدأ نزول الوحي؟",
+                options = listOf("30 عامًا", "35 عامًا", "40 عامًا", "45 عامًا"),
+                correctAnswer = 2,
+                explanation = "بدأ نزول الوحي على النبي ﷺ عندما بلغ أربعين عامًا."
+            )
+        )
+    ),
+    QuizCategory(
+        title = "العبادات",
+        emoji = "🤲",
+        description = "أركان الإسلام والصلاة والصيام والحج",
+        questions = listOf(
+            QuizQuestion(
+                question = "كم عدد أركان الإسلام؟",
+                options = listOf("أربعة", "خمسة", "ستة", "سبعة"),
+                correctAnswer = 1,
+                explanation = "أركان الإسلام خمسة: الشهادتان، والصلاة، والزكاة، والصوم، والحج."
+            ),
+            QuizQuestion(
+                question = "كم عدد الصلوات المفروضة في اليوم والليلة؟",
+                options = listOf("ثلاث صلوات", "أربع صلوات", "خمس صلوات", "ست صلوات"),
+                correctAnswer = 2,
+                explanation = "فرض الله على المسلمين خمس صلوات في اليوم والليلة."
+            ),
+            QuizQuestion(
+                question = "في أي شهر يصوم المسلمون؟",
+                options = listOf("شعبان", "رمضان", "شوال", "محرم"),
+                correctAnswer = 1,
+                explanation = "صيام شهر رمضان هو الركن الرابع من أركان الإسلام."
+            ),
+            QuizQuestion(
+                question = "إلى أي جهة يتجه المسلمون في الصلاة؟",
+                options = listOf("المسجد النبوي", "المسجد الأقصى", "الكعبة المشرفة", "جبل عرفات"),
+                correctAnswer = 2,
+                explanation = "يتجه المسلمون في الصلاة إلى الكعبة المشرفة في المسجد الحرام."
+            ),
+            QuizQuestion(
+                question = "في أي شهر هجري تؤدى مناسك الحج؟",
+                options = listOf("رمضان", "شوال", "ذو القعدة", "ذو الحجة"),
+                correctAnswer = 3,
+                explanation = "تؤدى مناسك الحج في شهر ذي الحجة."
+            )
+        )
+    ),
+    QuizCategory(
+        title = "الصحابة",
+        emoji = "🏅",
+        description = "الخلفاء الراشدون وأشهر الصحابة",
+        questions = listOf(
+            QuizQuestion(
+                question = "من أول الخلفاء الراشدين؟",
+                options = listOf("عمر بن الخطاب", "أبو بكر الصديق", "عثمان بن عفان", "علي بن أبي طالب"),
+                correctAnswer = 1,
+                explanation = "أبو بكر الصديق رضي الله عنه هو أول الخلفاء الراشدين."
+            ),
+            QuizQuestion(
+                question = "من ثاني الخلفاء الراشدين؟",
+                options = listOf("عمر بن الخطاب", "عثمان بن عفان", "علي بن أبي طالب", "أبو عبيدة بن الجراح"),
+                correctAnswer = 0,
+                explanation = "عمر بن الخطاب رضي الله عنه هو ثاني الخلفاء الراشدين."
+            ),
+            QuizQuestion(
+                question = "من الصحابي الملقب بذي النورين؟",
+                options = listOf("طلحة بن عبيد الله", "الزبير بن العوام", "عثمان بن عفان", "سعد بن أبي وقاص"),
+                correctAnswer = 2,
+                explanation = "لُقّب عثمان بن عفان رضي الله عنه بذي النورين لزواجه من ابنتين للنبي ﷺ."
+            ),
+            QuizQuestion(
+                question = "من رابع الخلفاء الراشدين؟",
+                options = listOf("علي بن أبي طالب", "معاوية بن أبي سفيان", "خالد بن الوليد", "عبد الله بن مسعود"),
+                correctAnswer = 0,
+                explanation = "علي بن أبي طالب رضي الله عنه هو رابع الخلفاء الراشدين."
+            ),
+            QuizQuestion(
+                question = "من أشهر مؤذني النبي ﷺ؟",
+                options = listOf("بلال بن رباح", "زيد بن ثابت", "سلمان الفارسي", "أبو هريرة"),
+                correctAnswer = 0,
+                explanation = "بلال بن رباح رضي الله عنه من أشهر مؤذني النبي ﷺ."
+            )
+        )
+    )
+)
