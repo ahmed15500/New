@@ -46,7 +46,7 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-            adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity | tee activity-start.txt || true
+            adb shell am start -W -n com.ahmed.yawmeyaty/.QuizGameActivity | tee activity-start.txt || true
             sleep 8
             adb exec-out screencap -p > islamic-quiz-home.png || true
             adb logcat -d > app-launch-logcat.txt || true
@@ -54,7 +54,7 @@ jobs:
       - name: Verify launch evidence
         run: |
           if ! grep -q "Status: ok" activity-start.txt; then
-            echo "MainActivity did not start successfully."
+            echo "QuizGameActivity did not start successfully."
             exit 1
           fi
 
@@ -64,7 +64,7 @@ jobs:
             exit 1
           fi
 
-          echo "Islamic Quiz opened without a fatal crash."
+          echo "Islamic Quiz 3.1.0 opened without a fatal crash."
 
       - name: Upload launch evidence
         if: always()
