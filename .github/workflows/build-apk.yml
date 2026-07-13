@@ -46,20 +46,20 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Midani-Build-Log
+          name: Islamic-Quiz-Build-Log
           path: build-log.txt
           if-no-files-found: warn
           retention-days: 7
 
       - name: Rename APK
         if: success()
-        run: cp app/build/outputs/apk/debug/app-debug.apk Midani-v2.1.0-debug.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Islamic-Quiz-v3.0.0-debug.apk
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Midani-APK
-          path: Midani-v2.1.0-debug.apk
+          name: Islamic-Quiz-APK
+          path: Islamic-Quiz-v3.0.0-debug.apk
           if-no-files-found: error
           retention-days: 30
