@@ -8,7 +8,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Yawmeyaty">
         <activity
-            android:name=".MainActivity"
+            android:name=".QuizGameActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
