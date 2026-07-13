@@ -32,7 +32,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Build and launch both activities on Android 10
+      - name: Build and launch Islamic Quiz on Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -46,22 +46,13 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
 
-            adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity | tee main-activity-start.txt || true
-            sleep 6
-            adb exec-out screencap -p > midani-main.png || true
-
-            adb shell am start -W -n com.ahmed.yawmeyaty/.ListenSaverActivity | tee listen-saver-start.txt || true
-            sleep 6
-            adb exec-out screencap -p > listen-saver.png || true
+            adb shell am start -W -n com.ahmed.yawmeyaty/.MainActivity | tee activity-start.txt || true
+            sleep 8
+            adb exec-out screencap -p > islamic-quiz-home.png || true
             adb logcat -d > app-launch-logcat.txt || true
 
-            if ! grep -q "Status: ok" main-activity-start.txt; then
+            if ! grep -q "Status: ok" activity-start.txt; then
               echo "MainActivity did not start successfully."
-              exit 1
-            fi
-
-            if ! grep -q "Status: ok" listen-saver-start.txt; then
-              echo "ListenSaverActivity did not start successfully."
               exit 1
             fi
 
@@ -71,18 +62,16 @@ jobs:
               exit 1
             fi
 
-            echo "MainActivity and ListenSaverActivity opened without a fatal crash."
+            echo "Islamic Quiz opened without a fatal crash."
 
       - name: Upload launch evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-launch-evidence
+          name: islamic-quiz-launch-evidence
           path: |
             app-launch-logcat.txt
-            main-activity-start.txt
-            listen-saver-start.txt
-            midani-main.png
-            listen-saver.png
+            activity-start.txt
+            islamic-quiz-home.png
           if-no-files-found: warn
           retention-days: 7
