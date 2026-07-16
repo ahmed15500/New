@@ -1,0 +1,140 @@
+    val lastSubscriptionMonth: Int?,
+    val lastPaidOn: String?,
+    val isSubscribedCurrentMonth: Boolean
+)
+
+private data class CustomerDraft(
+    val id: String? = null,
+    val fullName: String,
+    val phone: String?,
+    val village: String?,
+    val address: String?,
+    val notes: String?
+)
+
+private class SessionStore(context: Context) {
+    private val preferences = context.getSharedPreferences("eco_waste_session", Context.MODE_PRIVATE)
+
+    fun load(): UserSession? {
+        val email = preferences.getString("email", null) ?: return null
+        val accessToken = preferences.getString("access_token", null) ?: return null
+        return UserSession(
+            email = email,
+            accessToken = accessToken,
+            refreshToken = preferences.getString("refresh_token", "").orEmpty(),
+            role = preferences.getString("role", "field").orEmpty(),
+            displayName = preferences.getString("display_name", email).orEmpty()
+        )
+    }
+
+    fun save(session: UserSession) {
+        preferences.edit()
+            .putString("email", session.email)
+            .putString("access_token", session.accessToken)
+            .putString("refresh_token", session.refreshToken)
+            .putString("role", session.role)
+            .putString("display_name", session.displayName)
+            .apply()
+    }
+
+    fun clear() {
+        preferences.edit().clear().apply()
+    }
+}
+
+private class EcoWasteApi {
+    suspend fun login(email: String, password: String): UserSession = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("email", email.trim())
+            .put("password", password)
+            .toString()
+        val authRaw = request(
+            method = "POST",
+            path = "/auth/v1/token?grant_type=password",
+            body = body
+        )
+        val auth = JSONObject(authRaw)
+        val accessToken = auth.getString("access_token")
+        val refreshToken = auth.optString("refresh_token")
+        val userEmail = auth.getJSONObject("user").optString("email", email.trim())
+
+        val accessRaw = request(
+            method = "GET",
+            path = "/rest/v1/eco_waste_access?select=role,display_name&email=eq.${encode(userEmail)}",
+            token = accessToken
+        )
+        val accessRows = JSONArray(accessRaw)
+        require(accessRows.length() > 0) { "هذا الحساب غير مصرح له باستخدام تطبيق إيكو ويست." }
+        val access = accessRows.getJSONObject(0)
+        UserSession(
+            email = userEmail,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            role = access.getString("role"),
+            displayName = access.optString("display_name").ifBlank { userEmail }
+        )
+    }
+
+    suspend fun loadCustomers(token: String): List<CustomerStatus> = withContext(Dispatchers.IO) {
+        val raw = request(
+            method = "GET",
+            path = "/rest/v1/eco_waste_customer_status?select=id,full_name,phone,village,address,notes,last_subscription_year,last_subscription_month,last_paid_on,is_subscribed_current_month&order=full_name.asc",
+            token = token
+        )
+        val array = JSONArray(raw)
+        buildList {
+            for (index in 0 until array.length()) {
+                val item = array.getJSONObject(index)
+                add(
+                    CustomerStatus(
+                        id = item.getString("id"),
+                        fullName = item.getString("full_name"),
+                        phone = item.nullableString("phone"),
+                        village = item.nullableString("village"),
+                        address = item.nullableString("address"),
+                        notes = item.nullableString("notes"),
+                        lastSubscriptionYear = item.nullableInt("last_subscription_year"),
+                        lastSubscriptionMonth = item.nullableInt("last_subscription_month"),
+                        lastPaidOn = item.nullableString("last_paid_on"),
+                        isSubscribedCurrentMonth = item.optBoolean("is_subscribed_current_month", false)
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun saveCustomer(token: String, draft: CustomerDraft): CustomerStatus = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("full_name", draft.fullName.trim())
+            .putNullable("phone", draft.phone)
+            .putNullable("village", draft.village)
+            .putNullable("address", draft.address)
+            .putNullable("notes", draft.notes)
+            .toString()
+
+        val raw = if (draft.id == null) {
+            request(
+                method = "POST",
+                path = "/rest/v1/eco_waste_customers",
+                token = token,
+                body = body,
+                prefer = "return=representation"
+            )
+        } else {
+            request(
+                method = "PATCH",
+                path = "/rest/v1/eco_waste_customers?id=eq.${encode(draft.id)}",
+                token = token,
+                body = body,
+                prefer = "return=representation"
+            )
+        }
+        val customer = JSONArray(raw).getJSONObject(0)
+        CustomerStatus(
+            id = customer.getString("id"),
+            fullName = customer.getString("full_name"),
+            phone = customer.nullableString("phone"),
+            village = customer.nullableString("village"),
+            address = customer.nullableString("address"),
+            notes = customer.nullableString("notes"),
+            lastSubscriptionYear = null,
