@@ -1,0 +1,113 @@
+name: Apply Eco Waste v4
+
+on:
+  push:
+    branches: [ agent/eco-waste-app-v4 ]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/eco-waste-app-v4
+
+      - name: Assemble Eco Waste application
+        run: |
+          mkdir -p app/src/main/java/com/ahmed/yawmeyaty
+          cat tmp/eco_parts/part_* > app/src/main/java/com/ahmed/yawmeyaty/EcoWasteActivity.kt
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="@string/app_name"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.Yawmeyaty">
+                  <activity
+                      android:name=".EcoWasteActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/strings.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">إيكو ويست</string>
+          </resources>
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          build = Path('app/build.gradle.kts')
+          text = build.read_text(encoding='utf-8')
+          import re
+          text = re.sub(r'versionCode = \d+', 'versionCode = 8', text)
+          text = re.sub(r'versionName = "[^"]+"', 'versionName = "4.0.0"', text)
+          build.write_text(text, encoding='utf-8')
+
+          workflow = Path('.github/workflows/build-apk.yml')
+          if workflow.exists():
+              w = workflow.read_text(encoding='utf-8')
+              w = re.sub(r'Islamic-Quiz-v[^ ]+-debug\.apk', 'Eco-Waste-v4.0.0-debug.apk', w)
+              w = w.replace('Islamic-Quiz-APK', 'Eco-Waste-APK')
+              w = w.replace('Islamic-Quiz-Build-Log', 'Eco-Waste-Build-Log')
+              workflow.write_text(w, encoding='utf-8')
+
+          smoke = Path('.github/workflows/android-smoke-test.yml')
+          if smoke.exists():
+              s = smoke.read_text(encoding='utf-8')
+              s = re.sub(r'com\.ahmed\.yawmeyaty/\.[A-Za-z0-9_]+', 'com.ahmed.yawmeyaty/.EcoWasteActivity', s)
+              s = s.replace('Islamic Quiz', 'Eco Waste')
+              s = s.replace('islamic-quiz-home.png', 'eco-waste-home.png')
+              s = s.replace('islamic-quiz-launch-evidence', 'eco-waste-launch-evidence')
+              s = s.replace('QuizGameActivity', 'EcoWasteActivity')
+              smoke.write_text(s, encoding='utf-8')
+          PY
+
+          cat > README.md <<'EOF'
+          # إيكو ويست — إدارة اشتراكات جمع المخلفات
+
+          تطبيق أندرويد عربي متصل بقاعدة Supabase مركزية لإدارة المشتركين في خدمة إيكو ويست.
+
+          ## الصلاحيات
+
+          - **Admin:** إضافة المشتركين، تعديل البيانات، وتجديد اشتراك الشهر الحالي.
+          - **Field Officer:** البحث بالاسم أو الهاتف وعرض حالة الاشتراك فقط.
+
+          ## منطق الاشتراك
+
+          يظهر العميل «مشترك» فقط عند وجود اشتراك في نفس الشهر والسنة الحالية. إذا كان آخر دفع في شهر سابق ولم يتم التجديد، يظهر «غير مشترك» تلقائيًا.
+
+          ## البيانات
+
+          تم استيراد 302 سجلًا من ملفي المشتركين وغير المشتركين، بينها 246 اشتراكًا لشهر يوليو 2026.
+
+          ## التقنية
+
+          Kotlin، Jetpack Compose، Material 3، Supabase Auth، PostgREST وRLS.
+          EOF
+
+          rm -rf tmp/eco_parts
+          rm -f .github/workflows/apply-eco-waste-v4.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Transform app into Eco Waste subscriber manager"
+          git push origin HEAD:agent/eco-waste-app-v4
