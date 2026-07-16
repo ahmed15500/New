@@ -4,6 +4,27 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+val generatedEcoWasteDir = layout.buildDirectory.dir("generated/ecoWaste/kotlin")
+val generateEcoWasteSource = tasks.register("generateEcoWasteSource") {
+    inputs.dir(rootProject.layout.projectDirectory.dir("tmp/eco_parts"))
+    outputs.dir(generatedEcoWasteDir)
+
+    doLast {
+        val partsDirectory = rootProject.file("tmp/eco_parts")
+        val parts = partsDirectory.listFiles()
+            ?.filter { it.name.startsWith("part_") }
+            ?.sortedBy { it.name }
+            .orEmpty()
+        require(parts.isNotEmpty()) { "Eco Waste source parts were not found." }
+
+        val outputFile = generatedEcoWasteDir.get()
+            .file("com/ahmed/yawmeyaty/EcoWasteActivity.kt")
+            .asFile
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(parts.joinToString(separator = "") { it.readText() })
+    }
+}
+
 android {
     namespace = "com.ahmed.yawmeyaty"
     compileSdk = 35
@@ -12,8 +33,8 @@ android {
         applicationId = "com.ahmed.yawmeyaty"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "3.2.0"
+        versionCode = 8
+        versionName = "4.0.0"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -43,11 +64,21 @@ android {
         compose = true
     }
 
+    sourceSets {
+        getByName("main").java.srcDir(generatedEcoWasteDir.get().asFile)
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+tasks.matching { task ->
+    task.name.startsWith("compile") && task.name.endsWith("Kotlin")
+}.configureEach {
+    dependsOn(generateEcoWasteSource)
 }
 
 dependencies {
