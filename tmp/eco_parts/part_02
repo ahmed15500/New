@@ -1,0 +1,140 @@
+            lastSubscriptionMonth = null,
+            lastPaidOn = null,
+            isSubscribedCurrentMonth = false
+        )
+    }
+
+    suspend fun renewCurrentMonth(token: String, customerId: String) = withContext(Dispatchers.IO) {
+        val period = YearMonth.now()
+        val body = JSONObject()
+            .put("customer_id", customerId)
+            .put("subscription_year", period.year)
+            .put("subscription_month", period.monthValue)
+            .put("paid_on", LocalDate.now().toString())
+            .put("notes", "تجديد من تطبيق إيكو ويست")
+            .toString()
+        request(
+            method = "POST",
+            path = "/rest/v1/eco_waste_subscriptions?on_conflict=customer_id,subscription_year,subscription_month",
+            token = token,
+            body = body,
+            prefer = "resolution=merge-duplicates,return=minimal"
+        )
+    }
+
+    private fun request(
+        method: String,
+        path: String,
+        token: String? = null,
+        body: String? = null,
+        prefer: String? = null
+    ): String {
+        val connection = URL(SUPABASE_URL + path).openConnection() as HttpURLConnection
+        connection.requestMethod = method
+        connection.connectTimeout = 20_000
+        connection.readTimeout = 25_000
+        connection.setRequestProperty("apikey", PUBLISHABLE_KEY)
+        connection.setRequestProperty("Accept", "application/json")
+        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+        prefer?.let { connection.setRequestProperty("Prefer", it) }
+
+        if (body != null) {
+            connection.doOutput = true
+            connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
+        }
+
+        val status = connection.responseCode
+        val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+        val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+        connection.disconnect()
+
+        if (status !in 200..299) {
+            val message = runCatching {
+                val json = JSONObject(response)
+                json.optString("msg").ifBlank {
+                    json.optString("message").ifBlank { json.optString("error_description") }
+                }
+            }.getOrNull().orEmpty().ifBlank { "تعذر الاتصال بالخدمة. رمز الخطأ: $status" }
+            throw IllegalStateException(message)
+        }
+        return response
+    }
+
+    companion object {
+        private const val SUPABASE_URL = "https://nxbakauhojxgavjnpsia.supabase.co"
+        private const val PUBLISHABLE_KEY = "sb_publishable_aYaJtX2b-RrDODRJnQr_6Q_nkNmKE9R"
+
+        private fun encode(value: String): String =
+            URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replace("+", "%20")
+    }
+}
+
+private fun JSONObject.nullableString(key: String): String? =
+    if (isNull(key)) null else optString(key).trim().takeIf { it.isNotEmpty() }
+
+private fun JSONObject.nullableInt(key: String): Int? =
+    if (isNull(key)) null else optInt(key)
+
+private fun JSONObject.putNullable(key: String, value: String?): JSONObject =
+    if (value.isNullOrBlank()) put(key, JSONObject.NULL) else put(key, value.trim())
+
+@Composable
+private fun EcoWasteApp() {
+    val context = LocalContext.current
+    val api = remember { EcoWasteApi() }
+    val store = remember { SessionStore(context.applicationContext) }
+    var session by remember { mutableStateOf(store.load()) }
+    var customers by remember { mutableStateOf(emptyList<CustomerStatus>()) }
+    var loading by remember { mutableStateOf(false) }
+    var loginError by remember { mutableStateOf<String?>(null) }
+    var selectedCustomer by remember { mutableStateOf<CustomerStatus?>(null) }
+    var editingCustomer by remember { mutableStateOf<CustomerStatus?>(null) }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    fun refreshCustomers() {
+        val current = session ?: return
+        scope.launch {
+            loading = true
+            runCatching { api.loadCustomers(current.accessToken) }
+                .onSuccess { customers = it }
+                .onFailure { error ->
+                    snackbarMessage = error.message ?: "تعذر تحميل المشتركين."
+                    if (error.message?.contains("JWT", ignoreCase = true) == true) {
+                        store.clear()
+                        session = null
+                    }
+                }
+            loading = false
+        }
+    }
+
+    LaunchedEffect(session?.accessToken) {
+        if (session != null) refreshCustomers()
+    }
+
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            snackbarMessage = null
+        }
+    }
+
+    if (session == null) {
+        LoginScreen(
+            loading = loading,
+            error = loginError,
+            onLogin = { email, password ->
+                scope.launch {
+                    loading = true
+                    loginError = null
+                    runCatching { api.login(email, password) }
+                        .onSuccess {
+                            store.save(it)
+                            session = it
+                        }
+                        .onFailure { loginError = it.message ?: "تعذر تسجيل الدخول." }
+                    loading = false
