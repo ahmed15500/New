@@ -1,0 +1,140 @@
+            fontWeight = FontWeight.Black
+        )
+        Text(
+            text = if (query.isBlank()) "حدّث القائمة وحاول مرة أخرى" else "راجع الاسم أو رقم الهاتف",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun CustomerCard(customer: CustomerStatus, onClick: () -> Unit) {
+    val active = customer.isSubscribedCurrentMonth
+    val container = if (active) Color(0xFFE7F6EC) else Color(0xFFFFECE7)
+    val statusColor = if (active) Color(0xFF167644) else Color(0xFFB53A24)
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = container),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(shape = CircleShape, color = statusColor.copy(alpha = 0.12f), modifier = Modifier.size(52.dp)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        if (active) Icons.Rounded.CheckCircle else Icons.Rounded.Close,
+                        contentDescription = null,
+                        tint = statusColor
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(customer.fullName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                customer.phone?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Phone, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(4.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                customer.village?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(4.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            Surface(shape = RoundedCornerShape(14.dp), color = statusColor) {
+                Text(
+                    text = if (active) "مشترك" else "غير مشترك",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomerDetailsDialog(
+    customer: CustomerStatus,
+    isAdmin: Boolean,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onRenew: () -> Unit
+) {
+    val active = customer.isSubscribedCurrentMonth
+    val statusColor = if (active) Color(0xFF167644) else Color(0xFFB53A24)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(customer.fullName, fontWeight = FontWeight.Black) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = statusColor.copy(alpha = 0.12f)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(if (active) Icons.Rounded.CheckCircle else Icons.Rounded.Close, contentDescription = null, tint = statusColor)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(if (active) "الاشتراك نشط هذا الشهر" else "غير مشترك في الشهر الحالي", fontWeight = FontWeight.Black, color = statusColor)
+                            Text(currentPeriodLabel(), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                DetailRow(Icons.Rounded.Phone, "رقم الهاتف", customer.phone ?: "غير مسجل")
+                DetailRow(Icons.Rounded.LocationOn, "القرية / المنطقة", customer.village ?: "غير مسجلة")
+                DetailRow(Icons.Rounded.Person, "العنوان", customer.address ?: "غير مسجل")
+                DetailRow(Icons.Rounded.CalendarMonth, "آخر اشتراك", lastSubscriptionLabel(customer))
+                customer.notes?.let { DetailRow(Icons.Rounded.Edit, "ملاحظات", it) }
+            }
+        },
+        confirmButton = {
+            if (isAdmin) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = onEdit) {
+                        Icon(Icons.Rounded.Edit, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("تعديل")
+                    }
+                    if (!active) {
+                        Button(onClick = onRenew) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("تجديد الشهر")
+                        }
+                    }
+                }
+            } else {
+                TextButton(onClick = onDismiss) { Text("إغلاق") }
+            }
+        },
+        dismissButton = {
+            if (isAdmin) TextButton(onClick = onDismiss) { Text("إغلاق") }
+        }
+    )
+}
+
+@Composable
+private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, fontWeight = FontWeight.Bold)
+        }
+    }
+}
