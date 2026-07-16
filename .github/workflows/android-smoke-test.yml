@@ -32,7 +32,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Build and launch synced Islamic Quiz on Android 10
+      - name: Build and launch Eco Waste on Android 10
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -46,15 +46,15 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-            adb shell am start -W -n com.ahmed.yawmeyaty/.OnlineQuizActivity | tee activity-start.txt || true
+            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteActivity | tee activity-start.txt || true
             sleep 10
-            adb exec-out screencap -p > islamic-quiz-online-home.png || true
+            adb exec-out screencap -p > eco-waste-home.png || true
             adb logcat -d > app-launch-logcat.txt || true
 
       - name: Verify launch evidence
         run: |
           if ! grep -q "Status: ok" activity-start.txt; then
-            echo "OnlineQuizActivity did not start successfully."
+            echo "EcoWasteActivity did not start successfully."
             exit 1
           fi
 
@@ -64,16 +64,16 @@ jobs:
             exit 1
           fi
 
-          echo "Islamic Quiz 3.2.0 opened without a fatal crash."
+          echo "Eco Waste 4.0.0 opened without a fatal crash."
 
       - name: Upload launch evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: islamic-quiz-launch-evidence
+          name: eco-waste-launch-evidence
           path: |
             app-launch-logcat.txt
             activity-start.txt
-            islamic-quiz-online-home.png
+            eco-waste-home.png
           if-no-files-found: warn
           retention-days: 7
