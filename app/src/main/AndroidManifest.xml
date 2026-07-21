@@ -13,6 +13,9 @@
             android:exported="false" />
         <activity
             android:name=".EcoWastePhoneActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EcoWasteAdminActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
