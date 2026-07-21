@@ -53,13 +53,13 @@ jobs:
 
       - name: Rename APK
         if: success()
-        run: cp app/build/outputs/apk/debug/app-debug.apk Eco-Waste-v4.0.0.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Eco-Waste-v4.1.0-Phone-Login.apk
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Eco-Waste-APK
-          path: Eco-Waste-v4.0.0.apk
+          path: Eco-Waste-v4.1.0-Phone-Login.apk
           if-no-files-found: error
           retention-days: 30
