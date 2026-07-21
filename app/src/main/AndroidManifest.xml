@@ -13,7 +13,7 @@
             android:exported="false" />
         <activity
             android:name=".EcoWastePhoneActivity"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".EcoWasteAdminActivity"
             android:exported="true">
