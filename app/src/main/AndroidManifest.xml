@@ -10,6 +10,9 @@
         android:theme="@style/Theme.Yawmeyaty">
         <activity
             android:name=".EcoWasteActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EcoWastePhoneActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
