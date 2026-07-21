@@ -1,0 +1,135 @@
+name: Apply Phone Login Migration
+
+on:
+  push:
+    branches: [ agent/phone-login-ecowaste-v4.1 ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phone-login-ecowaste-v4.1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch Eco Waste phone login
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/ahmed/yawmeyaty/EcoWasteActivity.kt')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''    suspend fun login(email: String, password: String): UserSession = withContext(Dispatchers.IO) {
+              val body = JSONObject()
+                  .put("email", email.trim())
+                  .put("password", password)
+                  .toString()
+              val authRaw = request(
+                  method = "POST",
+                  path = "/auth/v1/token?grant_type=password",
+                  body = body
+              )
+              val auth = JSONObject(authRaw)
+              val accessToken = auth.getString("access_token")
+              val refreshToken = auth.optString("refresh_token")
+              val userEmail = auth.getJSONObject("user").optString("email", email.trim())
+          '''
+          new = '''    suspend fun login(phone: String, password: String): UserSession = withContext(Dispatchers.IO) {
+              val normalizedPhone = normalizeEgyptianPhone(phone)
+              require(normalizedPhone.matches(Regex("^01[0125]\\\\d{8}$"))) {
+                  "اكتب رقم تليفون مصري صحيح مكوّن من 11 رقمًا."
+              }
+              val loginEmail = "$normalizedPhone@ecowaste.local"
+              val body = JSONObject()
+                  .put("email", loginEmail)
+                  .put("password", password)
+                  .toString()
+              val authRaw = request(
+                  method = "POST",
+                  path = "/auth/v1/token?grant_type=password",
+                  body = body
+              )
+              val auth = JSONObject(authRaw)
+              val accessToken = auth.getString("access_token")
+              val refreshToken = auth.optString("refresh_token")
+              val userEmail = auth.getJSONObject("user").optString("email", loginEmail)
+          '''
+          if old not in text:
+              raise SystemExit('login block not found')
+          text = text.replace(old, new, 1)
+
+          text = text.replace(
+              'private const val SUPABASE_URL = "https://nxbakauhojxgavjnpsia.supabase.co"',
+              'private const val SUPABASE_URL = "https://pqevttogkdjyedljtyyd.supabase.co"',
+              1,
+          )
+          text = text.replace(
+              'private const val PUBLISHABLE_KEY = "sb_publishable_aYaJtX2b-RrDODRJnQr_6Q_nkNmKE9R"',
+              'private const val PUBLISHABLE_KEY = "sb_publishable_asDp-LKRawMRSaPIQi9i6w_dm0XTBvw"',
+              1,
+          )
+
+          marker = '''        private fun encode(value: String): String =
+              URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replace("+", "%20")
+          '''
+          replacement = '''        private fun normalizeEgyptianPhone(value: String): String {
+              val digits = value.filter(Char::isDigit)
+              return when {
+                  digits.startsWith("0020") && digits.length == 14 -> "0${digits.drop(4)}"
+                  digits.startsWith("20") && digits.length == 12 -> "0${digits.drop(2)}"
+                  digits.length == 10 && digits.startsWith("1") -> "0$digits"
+                  else -> digits
+              }
+          }
+
+          private fun encode(value: String): String =
+              URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replace("+", "%20")
+          '''
+          if marker not in text:
+              raise SystemExit('companion marker not found')
+          text = text.replace(marker, replacement, 1)
+
+          text = text.replace('onLogin = { email, password ->', 'onLogin = { phone, password ->', 1)
+          text = text.replace('runCatching { api.login(email, password) }', 'runCatching { api.login(phone, password) }', 1)
+
+          text = text.replace('var email by remember { mutableStateOf("") }', 'var phone by remember { mutableStateOf("") }', 1)
+          text = text.replace('value = email,', 'value = phone,', 1)
+          text = text.replace('onValueChange = { email = it.trim() },', 'onValueChange = { phone = it.filter { char -> char.isDigit() || char == \'+\' }.take(15) },', 1)
+          text = text.replace('label = { Text("البريد الإلكتروني") },', 'label = { Text("رقم التليفون") },', 1)
+          text = text.replace('leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) },', 'leadingIcon = { Icon(Icons.Rounded.Phone, contentDescription = null) },', 1)
+          text = text.replace('keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),', 'keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),', 1)
+          text = text.replace('enabled = !loading && email.isNotBlank() && password.isNotBlank(),', 'enabled = !loading && phone.filter(Char::isDigit).length >= 10 && password.isNotBlank(),', 1)
+          text = text.replace('onClick = { onLogin(email, password) },', 'onClick = { onLogin(phone, password) },', 1)
+
+          path.write_text(text, encoding='utf-8')
+
+          gradle = Path('app/build.gradle.kts')
+          gradle_text = gradle.read_text(encoding='utf-8')
+          gradle_text = gradle_text.replace('versionCode = 8', 'versionCode = 9', 1)
+          gradle_text = gradle_text.replace('versionName = "4.0.0"', 'versionName = "4.1.0"', 1)
+          gradle.write_text(gradle_text, encoding='utf-8')
+
+          workflow = Path('.github/workflows/build-apk.yml')
+          workflow_text = workflow.read_text(encoding='utf-8')
+          workflow_text = workflow_text.replace('Eco-Waste-v4.0.0.apk', 'Eco-Waste-v4.1.0.apk')
+          workflow.write_text(workflow_text, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/ahmed/yawmeyaty/EcoWasteActivity.kt app/build.gradle.kts .github/workflows/build-apk.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Use phone-number login and Ecowaste backend"
+            git push origin HEAD:agent/phone-login-ecowaste-v4.1
+          fi
