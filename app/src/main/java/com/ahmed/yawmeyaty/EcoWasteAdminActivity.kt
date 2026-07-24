@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.Visibility
@@ -70,11 +70,33 @@ class EcoWasteAdminActivity : ComponentActivity() {
         setContent {
             YawmeyatyTheme {
                 AdminHome(
-                    openSubscribers = { startActivity(Intent(this, EcoWastePhoneActivity::class.java)) },
-                    openLogin = { startActivity(Intent(this, EcoWastePhoneActivity::class.java)) }
+                    openSubscribers = {
+                        startActivity(Intent(this, EcoWasteSubscribersActivity::class.java))
+                    },
+                    openLogin = { returnToLogin() },
+                    onLogout = {
+                        getSharedPreferences(SESSION_PREFS, Context.MODE_PRIVATE)
+                            .edit()
+                            .clear()
+                            .apply()
+                        returnToLogin()
+                    }
                 )
             }
         }
+    }
+
+    private fun returnToLogin() {
+        startActivity(
+            Intent(this, EcoWasteEntryActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        )
+        finish()
+    }
+
+    companion object {
+        private const val SESSION_PREFS = "eco_waste_phone_session"
     }
 }
 
@@ -134,7 +156,11 @@ private suspend fun createEcoWasteUser(
 }
 
 @Composable
-private fun AdminHome(openSubscribers: () -> Unit, openLogin: () -> Unit) {
+private fun AdminHome(
+    openSubscribers: () -> Unit,
+    openLogin: () -> Unit,
+    onLogout: () -> Unit
+) {
     val context = LocalContext.current
     var access by remember { mutableStateOf(readAccess(context)) }
     var showDialog by remember { mutableStateOf(false) }
@@ -144,7 +170,11 @@ private fun AdminHome(openSubscribers: () -> Unit, openLogin: () -> Unit) {
 
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(20.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(padding)
+                .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text("إيكو ويست", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
@@ -154,20 +184,26 @@ private fun AdminHome(openSubscribers: () -> Unit, openLogin: () -> Unit) {
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
                     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("سجّل الدخول أولًا", fontWeight = FontWeight.Black)
-                        Text("استخدم رقم التليفون وكلمة المرور، ثم ارجع إلى هذه الشاشة.")
-                        Button(onClick = openLogin, modifier = Modifier.fillMaxWidth()) { Text("فتح شاشة الدخول") }
+                        Text("استخدم رقم التليفون وكلمة المرور.")
+                        Button(onClick = openLogin, modifier = Modifier.fillMaxWidth()) {
+                            Text("فتح شاشة الدخول")
+                        }
                         OutlinedButton(
                             onClick = { access = readAccess(context) },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("تم تسجيل الدخول — تحديث") }
+                        ) {
+                            Text("تحديث حالة الدخول")
+                        }
                     }
                 }
             } else {
                 Text("مرحبًا، ${current.name}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
                     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(Icons.Rounded.People, contentDescription = null, modifier = Modifier.size(34.dp))
                         Text("المشتركين والاشتراكات", fontWeight = FontWeight.Black)
+                        Text("بحث سريع بالاسم أو رقم التليفون ومتابعة اشتراك الشهر الحالي.")
                         Button(onClick = openSubscribers, modifier = Modifier.fillMaxWidth()) {
                             Text("فتح سجل المشتركين")
                         }
@@ -185,6 +221,15 @@ private fun AdminHome(openSubscribers: () -> Unit, openLogin: () -> Unit) {
                             }
                         }
                     }
+                }
+
+                OutlinedButton(
+                    onClick = onLogout,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Rounded.Logout, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("تسجيل الخروج", fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -236,7 +281,7 @@ private fun AddUserDialog(
                 )
                 OutlinedTextField(
                     value = phone,
-                    onValueChange = { phone = it.filter { char -> char.isDigit() }.take(11) },
+                    onValueChange = { phone = it.filter { character -> character.isDigit() }.take(11) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("رقم التليفون") },
                     leadingIcon = { Icon(Icons.Rounded.Phone, contentDescription = null) },
@@ -278,10 +323,15 @@ private fun AddUserDialog(
                 enabled = !loading && name.isNotBlank() && phone.length == 11 && password.length >= 8,
                 onClick = { onCreate(name, phone, password, if (isAdmin) "admin" else "field") }
             ) {
-                if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Text("إنشاء الحساب")
+                if (loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("إنشاء الحساب")
+                }
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !loading) { Text("إلغاء") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !loading) { Text("إلغاء") }
+        }
     )
 }
