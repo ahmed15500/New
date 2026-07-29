@@ -22,6 +22,9 @@
             android:exported="false" />
         <activity
             android:name=".EcoWasteEntryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EcoWasteUpdateGateActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
