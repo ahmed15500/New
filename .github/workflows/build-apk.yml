@@ -78,3 +78,15 @@ jobs:
           path: Eco-Waste-v4.3.0-Modern-Brand.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish stable APK link
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p releases
+          cp Eco-Waste-v4.3.0-Modern-Brand.apk releases/Eco-Waste-latest.apk
+          cp Eco-Waste-v4.3.0-Modern-Brand.apk releases/Eco-Waste-v4.3.0.apk
+          git config user.name "Eco Waste Release Bot"
+          git config user.email "actions@github.com"
+          git add releases/Eco-Waste-latest.apk releases/Eco-Waste-v4.3.0.apk
+          git commit -m "Publish Eco Waste 4.3.0 APK [skip ci]" || exit 0
+          git push origin main
