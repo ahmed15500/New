@@ -1,66 +1,84 @@
 package com.ahmed.yawmeyaty.ui.theme
 
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF00695C),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFC9F4E5),
-    onPrimaryContainer = Color(0xFF00382F),
-    secondary = Color(0xFF3D665D),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFC1EBE0),
-    onSecondaryContainer = Color(0xFF163A33),
-    tertiary = Color(0xFF486A2C),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFC9F0A4),
-    onTertiaryContainer = Color(0xFF183800),
+    primary = Color(0xFF087A5B),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD8F6E8),
+    onPrimaryContainer = Color(0xFF043D32),
+    secondary = Color(0xFF0B5A58),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFD9F2F1),
+    onSecondaryContainer = Color(0xFF063B3A),
+    tertiary = Color(0xFFC89A3D),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFEBC0),
+    onTertiaryContainer = Color(0xFF4A3400),
     error = Color(0xFFBA1A1A),
     errorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFFF6FBF8),
-    onBackground = Color(0xFF17201D),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF17201D),
-    surfaceVariant = Color(0xFFDCE8E3),
-    onSurfaceVariant = Color(0xFF3E4945),
-    outline = Color(0xFF6E7974),
-    outlineVariant = Color(0xFFBEC9C4)
+    background = Color(0xFFF7FBF9),
+    onBackground = Color(0xFF14201C),
+    surface = Color(0xFFFCFFFD),
+    onSurface = Color(0xFF14201C),
+    surfaceVariant = Color(0xFFE0EAE5),
+    onSurfaceVariant = Color(0xFF3F4945),
+    outline = Color(0xFF71807A),
+    outlineVariant = Color(0xFFC0CEC7),
+    inverseSurface = Color(0xFF29322E),
+    inverseOnSurface = Color(0xFFEDF5F0),
+    inversePrimary = Color(0xFF6EDBAF)
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF72DBC1),
-    onPrimary = Color(0xFF00382F),
-    primaryContainer = Color(0xFF005046),
-    onPrimaryContainer = Color(0xFF94F8DC),
-    secondary = Color(0xFFA5CFC4),
-    onSecondary = Color(0xFF0D3730),
-    secondaryContainer = Color(0xFF254E47),
-    onSecondaryContainer = Color(0xFFC1EBE0),
-    tertiary = Color(0xFFADD28B),
-    onTertiary = Color(0xFF213600),
-    tertiaryContainer = Color(0xFF374F17),
-    onTertiaryContainer = Color(0xFFC9F0A4),
-    background = Color(0xFF0E1513),
-    onBackground = Color(0xFFDDE5E1),
-    surface = Color(0xFF111A17),
-    onSurface = Color(0xFFDDE5E1),
-    surfaceVariant = Color(0xFF3E4945),
-    onSurfaceVariant = Color(0xFFBEC9C4),
-    outline = Color(0xFF89938F)
+    primary = Color(0xFF6EDBAF),
+    onPrimary = Color(0xFF003829),
+    primaryContainer = Color(0xFF00513D),
+    onPrimaryContainer = Color(0xFFD8F6E8),
+    secondary = Color(0xFF9FDAD7),
+    onSecondary = Color(0xFF003736),
+    secondaryContainer = Color(0xFF164E4D),
+    onSecondaryContainer = Color(0xFFD9F2F1),
+    tertiary = Color(0xFFE7C16D),
+    onTertiary = Color(0xFF3E2E00),
+    tertiaryContainer = Color(0xFF594400),
+    onTertiaryContainer = Color(0xFFFFEBC0),
+    background = Color(0xFF0F1512),
+    onBackground = Color(0xFFDFE7E2),
+    surface = Color(0xFF111A16),
+    onSurface = Color(0xFFDFE7E2),
+    surfaceVariant = Color(0xFF3F4945),
+    onSurfaceVariant = Color(0xFFC0CEC7),
+    outline = Color(0xFF8A9992),
+    outlineVariant = Color(0xFF3F4945)
 )
 
 @Composable
 fun YawmeyatyTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val context = LocalContext.current
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> DarkColors
+        else -> LightColors
+    }
+
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = colorScheme,
         typography = MaterialTheme.typography,
         content = content
     )
