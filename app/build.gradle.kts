@@ -12,8 +12,8 @@ android {
         applicationId = "com.ahmed.yawmeyaty"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "4.2.2"
+        versionCode = 13
+        versionName = "4.2.3"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -41,6 +41,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
