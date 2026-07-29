@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -16,8 +16,23 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout source
+      - name: Checkout source branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Repair Compose import
+        if: github.event_name == 'pull_request'
+        run: |
+          FILE="app/src/main/java/com/ahmed/yawmeyaty/EcoWasteModernActivity.kt"
+          if grep -q '^import androidx.compose.foundation.layout.weight$' "$FILE"; then
+            sed -i '/^import androidx.compose.foundation.layout.weight$/d' "$FILE"
+            git config user.name "Eco Waste CI"
+            git config user.email "actions@github.com"
+            git add "$FILE"
+            git commit -m "Fix Compose weight import"
+            git push origin HEAD:${GITHUB_HEAD_REF}
+          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
