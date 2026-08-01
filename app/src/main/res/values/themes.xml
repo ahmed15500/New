@@ -4,8 +4,12 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">#F7FBF9</item>
+        <item name="android:navigationBarColor">#F7FBF9</item>
+        <item name="android:windowBackground">#F7FBF9</item>
+        <item name="android:colorAccent">#087A5B</item>
+        <item name="android:forceDarkAllowed">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
 </resources>
