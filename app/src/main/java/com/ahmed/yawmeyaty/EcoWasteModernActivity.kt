@@ -308,6 +308,20 @@ private class ModernEcoWasteApi {
         )
     }
 
+
+    suspend fun cancelCurrentMonth(token: String, customerId: String) = withContext(Dispatchers.IO) {
+        val period = YearMonth.now()
+        request(
+            method = "DELETE",
+            path = "/rest/v1/eco_waste_subscriptions" +
+                "?customer_id=eq.${encode(customerId)}" +
+                "&subscription_year=eq.${period.year}" +
+                "&subscription_month=eq.${period.monthValue}",
+            token = token,
+            prefer = "return=minimal"
+        )
+    }
+
     suspend fun createUser(token: String, draft: NewAppUserDraft) = withContext(Dispatchers.IO) {
         val phone = normalizeEgyptianPhone(draft.phone)
         require(phone.matches(Regex("^01[0125][0-9]{8}$"))) { "رقم التليفون غير صحيح." }
@@ -535,6 +549,20 @@ private fun ModernEcoWasteApp() {
                             refreshCustomers()
                         }
                         .onFailure { message = it.message ?: "تعذر تجديد الاشتراك." }
+                    loading = false
+                }
+            },
+            onCancelRenewal = {
+                val current = session ?: return@ModernCustomerDetailsDialog
+                scope.launch {
+                    loading = true
+                    runCatching { api.cancelCurrentMonth(current.accessToken, customer.id) }
+                        .onSuccess {
+                            selectedCustomer = null
+                            message = "تم إلغاء تجديد ${customer.fullName} للشهر الحالي وأصبح غير مشترك."
+                            refreshCustomers()
+                        }
+                        .onFailure { message = it.message ?: "تعذر إلغاء التجديد." }
                     loading = false
                 }
             }
@@ -1106,8 +1134,11 @@ private fun ModernCustomerDetailsDialog(
     isAdmin: Boolean,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
-    onRenew: () -> Unit
+    onRenew: () -> Unit,
+    onCancelRenewal: () -> Unit
 ) {
+    var confirmCancel by remember(customer.id) { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
@@ -1130,24 +1161,58 @@ private fun ModernCustomerDetailsDialog(
             }
         },
         confirmButton = {
-            if (isAdmin && !customer.activeThisMonth) {
-                Button(onClick = onRenew, shape = RoundedCornerShape(14.dp)) {
-                    Text("تجديد الشهر الحالي")
+            when {
+                isAdmin && customer.activeThisMonth -> {
+                    OutlinedButton(
+                        onClick = { confirmCancel = true },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("إلغاء تجديد الشهر")
+                    }
                 }
-            } else {
-                TextButton(onClick = onDismiss) { Text("إغلاق") }
+                isAdmin -> {
+                    Button(onClick = onRenew, shape = RoundedCornerShape(14.dp)) {
+                        Text("تجديد الشهر الحالي")
+                    }
+                }
+                else -> TextButton(onClick = onDismiss) { Text("إغلاق") }
             }
         },
         dismissButton = {
-            if (isAdmin) {
-                TextButton(onClick = onEdit) {
-                    Icon(Icons.Rounded.Edit, contentDescription = null)
-                    Spacer(Modifier.size(4.dp))
-                    Text("تعديل")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onDismiss) { Text("إغلاق") }
+                if (isAdmin) {
+                    TextButton(onClick = onEdit) {
+                        Icon(Icons.Rounded.Edit, contentDescription = null)
+                        Spacer(Modifier.size(4.dp))
+                        Text("تعديل")
+                    }
                 }
             }
         }
     )
+
+    if (confirmCancel) {
+        AlertDialog(
+            onDismissRequest = { confirmCancel = false },
+            icon = { Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("إلغاء تجديد الاشتراك؟", fontWeight = FontWeight.Black) },
+            text = { Text("سيصبح ${customer.fullName} غير مشترك في الشهر الحالي. لن يتم حذف بيانات المشترك.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmCancel = false
+                        onCancelRenewal()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("نعم، إلغاء التجديد") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmCancel = false }) { Text("رجوع") }
+            }
+        )
+    }
 }
 
 @Composable

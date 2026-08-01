@@ -12,17 +12,27 @@ android {
         applicationId = "com.ahmed.yawmeyaty"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "4.3.0"
+        versionCode = 15
+        versionName = "4.3.1"
 
         vectorDrawables {
             useSupportLibrary = true
         }
     }
 
+    signingConfigs {
+        create("ecoWasteRelease") {
+            storeFile = file("ecowaste-release.jks")
+            storePassword = "EcoWasteStable431"
+            keyAlias = "ecowaste"
+            keyPassword = "EcoWasteStable431"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("ecoWasteRelease")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

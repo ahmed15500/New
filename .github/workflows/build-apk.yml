@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout source branch
@@ -21,25 +21,40 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Repair Compose import
-        if: github.event_name == 'pull_request'
-        run: |
-          FILE="app/src/main/java/com/ahmed/yawmeyaty/EcoWasteModernActivity.kt"
-          if grep -q '^import androidx.compose.foundation.layout.weight$' "$FILE"; then
-            sed -i '/^import androidx.compose.foundation.layout.weight$/d' "$FILE"
-            git config user.name "Eco Waste CI"
-            git config user.email "actions@github.com"
-            git add "$FILE"
-            git commit -m "Fix Compose weight import"
-            git push origin HEAD:${GITHUB_HEAD_REF}
-          fi
-
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
+
+      - name: Apply Eco Waste 4.3.1 changes
+        run: python3 .github/scripts/apply_v431.py
+
+      - name: Create persistent signing key once
+        run: |
+          if [ ! -f app/ecowaste-release.jks ]; then
+            keytool -genkeypair \
+              -keystore app/ecowaste-release.jks \
+              -storepass EcoWasteStable431 \
+              -keypass EcoWasteStable431 \
+              -alias ecowaste \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Eco Waste, OU=Eco Waste App, O=Heliopolis University, L=Cairo, ST=Cairo, C=EG" \
+              -storetype JKS \
+              -noprompt
+          fi
+
+      - name: Persist source patch and signing key
+        if: github.event_name == 'pull_request'
+        run: |
+          git config user.name "Eco Waste Release Bot"
+          git config user.email "actions@github.com"
+          git add app/src/main/java/com/ahmed/yawmeyaty/EcoWasteModernActivity.kt app/ecowaste-release.jks
+          git diff --cached --quiet || git commit -m "Apply subscription undo and persistent signing"
+          git push origin HEAD:${GITHUB_HEAD_REF}
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -52,41 +67,48 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x gradlew
 
-      - name: Build debug APK
+      - name: Build signed release APK
         run: |
           set -o pipefail
-          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build-log.txt
+          ./gradlew --no-daemon --stacktrace assembleRelease 2>&1 | tee build-log.txt
 
-      - name: Upload build log
+      - name: Verify APK signature
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          apksigner verify --verbose --print-certs "$APK" | tee signature-report.txt
+
+      - name: Upload build evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Eco-Waste-Build-Log
-          path: build-log.txt
+          name: Eco-Waste-Build-Evidence
+          path: |
+            build-log.txt
+            signature-report.txt
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 30
 
       - name: Rename APK
         if: success()
-        run: cp app/build/outputs/apk/debug/app-debug.apk Eco-Waste-v4.3.0-Modern-Brand.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Eco-Waste-v4.3.1-Stable-Signed.apk
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Eco-Waste-APK
-          path: Eco-Waste-v4.3.0-Modern-Brand.apk
+          path: Eco-Waste-v4.3.1-Stable-Signed.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Publish stable APK link
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           mkdir -p releases
-          cp Eco-Waste-v4.3.0-Modern-Brand.apk releases/Eco-Waste-latest.apk
-          cp Eco-Waste-v4.3.0-Modern-Brand.apk releases/Eco-Waste-v4.3.0.apk
+          cp Eco-Waste-v4.3.1-Stable-Signed.apk releases/Eco-Waste-latest.apk
+          cp Eco-Waste-v4.3.1-Stable-Signed.apk releases/Eco-Waste-v4.3.1.apk
           git config user.name "Eco Waste Release Bot"
           git config user.email "actions@github.com"
-          git add releases/Eco-Waste-latest.apk releases/Eco-Waste-v4.3.0.apk
-          git commit -m "Publish Eco Waste 4.3.0 APK [skip ci]" || exit 0
+          git add releases/Eco-Waste-latest.apk releases/Eco-Waste-v4.3.1.apk
+          git commit -m "Publish Eco Waste 4.3.1 signed APK [skip ci]" || exit 0
           git push origin main
