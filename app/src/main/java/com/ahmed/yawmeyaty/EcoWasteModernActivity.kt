@@ -723,7 +723,7 @@ private fun ModernLoginScreen(
                         onValueChange = { phone = it.filter { char -> char.isDigit() || char == '+' }.take(15) },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("رقم التليفون") },
-                        placeholder = { Text("01208097044") },
+                        placeholder = { Text("مثال: 01XXXXXXXXX") },
                         leadingIcon = { Icon(Icons.Rounded.Phone, contentDescription = null) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         shape = RoundedCornerShape(18.dp),
