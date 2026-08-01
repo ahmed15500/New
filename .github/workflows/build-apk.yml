@@ -28,8 +28,19 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Apply Eco Waste 4.3.1 changes
+      - name: Apply subscription and signing compatibility
         run: python3 .github/scripts/apply_v431.py
+
+      - name: Apply generic login phone example
+        run: python3 .github/scripts/apply_v432.py
+
+      - name: Verify admin phone is not shown as placeholder
+        run: |
+          grep -q 'placeholder = { Text("مثال: 01XXXXXXXXX") }' app/src/main/java/com/ahmed/yawmeyaty/EcoWasteModernActivity.kt
+          if grep -q 'placeholder = { Text("01208097044") }' app/src/main/java/com/ahmed/yawmeyaty/EcoWasteModernActivity.kt; then
+            echo "Admin phone is still exposed in the login placeholder."
+            exit 1
+          fi
 
       - name: Create persistent signing key once
         run: |
@@ -53,7 +64,7 @@ jobs:
           git config user.name "Eco Waste Release Bot"
           git config user.email "actions@github.com"
           git add app/src/main/java/com/ahmed/yawmeyaty/EcoWasteModernActivity.kt app/ecowaste-release.jks
-          git diff --cached --quiet || git commit -m "Apply subscription undo and persistent signing"
+          git diff --cached --quiet || git commit -m "Use a generic phone example on login"
           git push origin HEAD:${GITHUB_HEAD_REF}
 
       - name: Set up Android SDK
@@ -90,14 +101,14 @@ jobs:
 
       - name: Rename APK
         if: success()
-        run: cp app/build/outputs/apk/release/app-release.apk Eco-Waste-v4.3.1-Stable-Signed.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Eco-Waste-v4.3.2-Stable-Signed.apk
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Eco-Waste-APK
-          path: Eco-Waste-v4.3.1-Stable-Signed.apk
+          path: Eco-Waste-v4.3.2-Stable-Signed.apk
           if-no-files-found: error
           retention-days: 90
 
@@ -105,10 +116,10 @@ jobs:
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           mkdir -p releases
-          cp Eco-Waste-v4.3.1-Stable-Signed.apk releases/Eco-Waste-latest.apk
-          cp Eco-Waste-v4.3.1-Stable-Signed.apk releases/Eco-Waste-v4.3.1.apk
+          cp Eco-Waste-v4.3.2-Stable-Signed.apk releases/Eco-Waste-latest.apk
+          cp Eco-Waste-v4.3.2-Stable-Signed.apk releases/Eco-Waste-v4.3.2.apk
           git config user.name "Eco Waste Release Bot"
           git config user.email "actions@github.com"
-          git add releases/Eco-Waste-latest.apk releases/Eco-Waste-v4.3.1.apk
-          git commit -m "Publish Eco Waste 4.3.1 signed APK [skip ci]" || exit 0
+          git add releases/Eco-Waste-latest.apk releases/Eco-Waste-v4.3.2.apk
+          git commit -m "Publish Eco Waste 4.3.2 signed APK [skip ci]" || exit 0
           git push origin main
