@@ -1,0 +1,4 @@
+Eco Waste 4.3.1
+- Persistent release signing certificate for future in-place updates.
+- Admin can cancel the current month's renewal after confirmation.
+- Light launch screen and light-only app theme; no black background.
