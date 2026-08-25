@@ -73,6 +73,9 @@ class EcoWasteAdminActivity : ComponentActivity() {
                     openSubscribers = {
                         startActivity(Intent(this, EcoWasteSubscribersActivity::class.java))
                     },
+                    openUsers = {
+                        startActivity(Intent(this, EcoWasteUsersActivity::class.java))
+                    },
                     openLogin = { returnToLogin() },
                     onLogout = {
                         getSharedPreferences(SESSION_PREFS, Context.MODE_PRIVATE)
@@ -158,6 +161,7 @@ private suspend fun createEcoWasteUser(
 @Composable
 private fun AdminHome(
     openSubscribers: () -> Unit,
+    openUsers: () -> Unit,
     openLogin: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -211,6 +215,17 @@ private fun AdminHome(
                 }
 
                 if (current.role == "admin") {
+                    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Rounded.People, contentDescription = null, modifier = Modifier.size(34.dp))
+                            Text("الحسابات المسجلة", fontWeight = FontWeight.Black)
+                            Text("عرض كل مستخدمي البرنامج وأرقام هواتفهم وصلاحياتهم وآخر تسجيل دخول.")
+                            Button(onClick = openUsers, modifier = Modifier.fillMaxWidth()) {
+                                Text("عرض مستخدمي البرنامج")
+                            }
+                        }
+                    }
+
                     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
                         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(34.dp))
