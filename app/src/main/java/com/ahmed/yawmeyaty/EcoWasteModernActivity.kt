@@ -509,6 +509,9 @@ private fun ModernEcoWasteApp() {
                 modifier = Modifier.padding(padding),
                 session = session!!,
                 onOpenSubscribers = { screen = ModernScreen.SUBSCRIBERS },
+                onOpenUsers = {
+                    context.startActivity(Intent(context, EcoWasteUsersActivity::class.java))
+                },
                 onAddUser = { showAddUser = true },
                 onLogout = ::logout
             )
@@ -798,6 +801,7 @@ private fun ModernHomeScreen(
     modifier: Modifier,
     session: ModernSession,
     onOpenSubscribers: () -> Unit,
+    onOpenUsers: () -> Unit,
     onAddUser: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -862,6 +866,17 @@ private fun ModernHomeScreen(
         }
 
         if (session.isAdmin) {
+            item {
+                ModernActionCard(
+                    icon = Icons.Rounded.People,
+                    title = "حسابات مستخدمي البرنامج",
+                    description = "اعرض كل الحسابات المسجلة وابحث بالاسم أو رقم التليفون واعرف صلاحية كل مستخدم.",
+                    buttonText = "عرض كل الحسابات",
+                    accent = Color(0xFF087A5B),
+                    onClick = onOpenUsers
+                )
+            }
+
             item {
                 ModernActionCard(
                     icon = Icons.Rounded.PersonAdd,
