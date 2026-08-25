@@ -12,6 +12,7 @@
         <activity android:name=".EcoWastePhoneActivity" android:exported="true" />
         <activity android:name=".EcoWasteSubscribersActivity" android:exported="false" />
         <activity android:name=".EcoWasteAdminActivity" android:exported="false" />
+        <activity android:name=".EcoWasteUsersActivity" android:exported="false" />
         <activity android:name=".EcoWasteEntryActivity" android:exported="false" />
         <activity android:name=".EcoWasteModernActivity" android:exported="false" />
         <activity
