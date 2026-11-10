@@ -67,11 +67,10 @@ jobs:
           git diff --cached --quiet || git commit -m "Use a generic phone example on login"
           git push origin HEAD:${GITHUB_HEAD_REF}
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 35
+      - name: Use preinstalled Android SDK and install API 35
         run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
