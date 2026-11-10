@@ -2,7 +2,7 @@ name: Eco Waste Modern Brand Smoke Test
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ review/v432-ci-base ]
   workflow_dispatch:
 
 permissions:
