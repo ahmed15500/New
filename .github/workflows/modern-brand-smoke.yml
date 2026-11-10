@@ -39,57 +39,35 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            set -e
             chmod +x gradlew
             ./gradlew --no-daemon assembleRelease
-            APK="app/build/outputs/apk/release/app-release.apk"
-            apksigner verify --verbose --print-certs "$APK" | tee smoke-signature-report.txt
-            adb install -r "$APK"
-
-            # Real installed app icon rendered by Android Settings.
+            /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk | tee smoke-signature-report.txt
+            cp app/build/outputs/apk/release/app-release.apk Eco-Waste-v4.3.3-SADEEM-Staged.apk
+            adb install -r app/build/outputs/apk/release/app-release.apk
             adb shell am start -W -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.ahmed.yawmeyaty >/dev/null
             sleep 2
             adb exec-out screencap -p > real-icon-app-info.png
-
-            # Capture several real startup frames so the centered splash frame is reviewable.
             adb shell am force-stop com.ahmed.yawmeyaty
-            (adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null 2>&1 &)
-            mkdir -p splash-frames
-            for i in $(seq -w 1 14); do
-              adb exec-out screencap -p > "splash-frames/splash-$i.png" || true
-              sleep 0.06
-            done
-
-            # Real login screen, bypassing remote update gate only inside smoke test.
+            (adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null 2>&1 &) ; mkdir -p splash-frames ; for i in $(seq -w 1 14); do adb exec-out screencap -p > "splash-frames/splash-$i.png" || true; sleep 0.06; done
             adb shell am force-stop com.ahmed.yawmeyaty
             adb shell run-as com.ahmed.yawmeyaty rm -f shared_prefs/eco_waste_phone_session.xml || true
             adb shell run-as com.ahmed.yawmeyaty am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee login-start.txt
             sleep 2
             adb exec-out screencap -p > real-login.png
-
-            # Real dashboard with a local test-only saved session; no network/data mutation.
-            cat > staging-session.xml <<'EOF'
-            <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
-            <map>
-              <string name="email">staging@ecowaste.local</string>
-              <string name="token">staging-token</string>
-              <string name="refresh"></string>
-              <string name="role">admin</string>
-              <string name="name">مراجعة الهوية</string>
-              <string name="login_phone">01000000000</string>
-            </map>
-            EOF
+            printf "%s" "<?xml version='1.0' encoding='utf-8' standalone='yes' ?><map><string name='email'>staging@ecowaste.local</string><string name='token'>staging-token</string><string name='refresh'></string><string name='role'>admin</string><string name='name'>مراجعة الهوية</string><string name='login_phone'>01000000000</string></map>" > staging-session.xml
             adb shell am force-stop com.ahmed.yawmeyaty
             adb shell run-as com.ahmed.yawmeyaty mkdir -p shared_prefs
             adb exec-out run-as com.ahmed.yawmeyaty sh -c 'cat > shared_prefs/eco_waste_phone_session.xml' < staging-session.xml
             adb shell run-as com.ahmed.yawmeyaty am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee dashboard-start.txt
             sleep 2
             adb exec-out screencap -p > real-dashboard.png
-
             adb logcat -d > app-launch-logcat.txt
 
       - name: Verify real app launch
         run: |
+          test -f Eco-Waste-v4.3.3-SADEEM-Staged.apk
+          test -f real-login.png
+          test -f real-dashboard.png
           grep -q "Status: ok" login-start.txt
           grep -q "Status: ok" dashboard-start.txt
           if grep -q "FATAL EXCEPTION" app-launch-logcat.txt; then
@@ -97,12 +75,13 @@ jobs:
             exit 1
           fi
 
-      - name: Upload real review evidence
+      - name: Upload staged APK and real review evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Eco-Waste-4.3.3-Real-Screenshots
+          name: Eco-Waste-v4.3.3-Round3-Staged
           path: |
+            Eco-Waste-v4.3.3-SADEEM-Staged.apk
             real-icon-app-info.png
             splash-frames/
             real-login.png
