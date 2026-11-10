@@ -3,9 +3,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_ecowaste_brand"
+        android:icon="@drawable/sadeem_app_icon"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_ecowaste_brand"
+        android:roundIcon="@drawable/sadeem_app_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.Yawmeyaty">
         <activity android:name=".EcoWasteActivity" android:exported="false" />
