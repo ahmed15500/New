@@ -48,7 +48,10 @@ jobs:
             sleep 2
             adb exec-out screencap -p > real-icon-app-info.png
             adb shell am force-stop com.ahmed.yawmeyaty
-            (adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null 2>&1 &) ; mkdir -p splash-frames ; for i in $(seq -w 1 14); do adb exec-out screencap -p > "splash-frames/splash-$i.png" || true; sleep 0.06; done
+            (adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null 2>&1 &) ; mkdir -p splash-frames ; for i in $(seq -w 1 20); do adb exec-out screencap -p > "splash-frames/splash-$i.png" || true; sleep 0.05; done
+            adb uninstall com.ahmed.yawmeyaty
+            ./gradlew --no-daemon assembleDebug
+            adb install app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.ahmed.yawmeyaty
             adb shell run-as com.ahmed.yawmeyaty rm -f shared_prefs/eco_waste_phone_session.xml || true
             adb shell run-as com.ahmed.yawmeyaty am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee login-start.txt
