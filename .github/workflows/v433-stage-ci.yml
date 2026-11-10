@@ -1,0 +1,181 @@
+name: Eco Waste v4.3.3 Staging Build and Screenshots
+
+on:
+  pull_request:
+    branches: [ review/v432-ci-base2 ]
+
+permissions:
+  contents: read
+
+jobs:
+  signed-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout v4.3.3 review head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build signed Release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease 2>&1 | tee build-log.txt
+
+      - name: Verify version and permanent signing key
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          apksigner verify --verbose --print-certs "$APK" | tee v433-signature.txt
+          apksigner verify --verbose --print-certs "releases/Eco-Waste-v4.3.2.apk" | tee v432-signature.txt
+
+          NEW_CERT=$(grep -m1 "Signer #1 certificate SHA-256 digest:" v433-signature.txt | sed 's/.*digest: //')
+          OLD_CERT=$(grep -m1 "Signer #1 certificate SHA-256 digest:" v432-signature.txt | sed 's/.*digest: //')
+          echo "v4.3.3 signer: $NEW_CERT"
+          echo "v4.3.2 signer: $OLD_CERT"
+          test "$NEW_CERT" = "$OLD_CERT"
+
+          aapt dump badging "$APK" | tee apk-badging.txt
+          grep -q "versionCode='17'" apk-badging.txt
+          grep -q "versionName='4.3.3'" apk-badging.txt
+
+          sha256sum "$APK" | tee apk-sha256.txt
+          cp "$APK" Eco-Waste-v4.3.3-SADEEM-Staged.apk
+
+      - name: Upload staged APK and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eco-Waste-v4.3.3-SADEEM-Staged
+          path: |
+            Eco-Waste-v4.3.3-SADEEM-Staged.apk
+            v433-signature.txt
+            v432-signature.txt
+            apk-badging.txt
+            apk-sha256.txt
+            build-log.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  real-screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout v4.3.3 review head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build and capture actual screens on Android 10
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -e
+            chmod +x gradlew
+            ./gradlew --no-daemon assembleDebug
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+            # App icon rendered by Android in App Info.
+            adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.ahmed.yawmeyaty
+            sleep 2
+            adb exec-out screencap -p > 01-app-icon.png
+
+            # Actual launch splash frames.
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null &
+            sleep 0.05
+            adb exec-out screencap -p > 02-splash-005.png
+            sleep 0.10
+            adb exec-out screencap -p > 02-splash-015.png
+            sleep 0.15
+            adb exec-out screencap -p > 02-splash-030.png
+
+            # Actual login screen from the built app, with no saved session.
+            adb shell pm clear com.ahmed.yawmeyaty >/dev/null
+            if ! adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee login-start.txt; then
+              adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity | tee login-start.txt
+            fi
+            sleep 3
+            adb exec-out screencap -p > 03-login.png
+
+            # Local debug-only session injection for a real dashboard render.
+            cat > session.xml <<'EOF'
+            <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+            <map>
+                <string name="email">review@ecowaste.local</string>
+                <string name="token">review-token</string>
+                <string name="refresh"></string>
+                <string name="role">admin</string>
+                <string name="name">أحمد</string>
+                <string name="login_phone">01000000000</string>
+            </map>
+            EOF
+            adb push session.xml /data/local/tmp/session.xml >/dev/null
+            adb shell run-as com.ahmed.yawmeyaty sh -c 'mkdir -p shared_prefs && cp /data/local/tmp/session.xml shared_prefs/eco_waste_phone_session.xml'
+            adb shell am force-stop com.ahmed.yawmeyaty
+            if ! adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee dashboard-start.txt; then
+              adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity | tee dashboard-start.txt
+            fi
+            sleep 2
+            adb exec-out screencap -p > 04-dashboard.png
+
+            adb logcat -d > app-launch-logcat.txt
+
+      - name: Verify no app crash
+        run: |
+          if grep -q "FATAL EXCEPTION" app-launch-logcat.txt; then
+            grep -A120 -B30 -E "FATAL EXCEPTION|AndroidRuntime|Process: com.ahmed.yawmeyaty" app-launch-logcat.txt || true
+            exit 1
+          fi
+          test -s 01-app-icon.png
+          test -s 03-login.png
+          test -s 04-dashboard.png
+
+      - name: Upload real built-app screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eco-Waste-v4.3.3-Real-Screenshots
+          path: |
+            01-app-icon.png
+            02-splash-005.png
+            02-splash-015.png
+            02-splash-030.png
+            03-login.png
+            04-dashboard.png
+            app-launch-logcat.txt
+            login-start.txt
+            dashboard-start.txt
+          if-no-files-found: error
+          retention-days: 30
