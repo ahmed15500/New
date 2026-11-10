@@ -56,13 +56,12 @@ jobs:
             adb exec-out screencap -p > 02-splash.png
 
             adb shell pm clear com.ahmed.yawmeyaty >/dev/null
-            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity | tee activity-start.txt
+            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee activity-start.txt
             sleep 6
             adb shell dumpsys activity activities | grep -E "EcoWaste(UpdateGate|Modern)Activity" | head -20 | tee foreground-activity.txt || true
             adb exec-out screencap -p > 03-login.png
 
-            adb shell run-as com.ahmed.yawmeyaty mkdir -p shared_prefs
-            adb shell run-as com.ahmed.yawmeyaty sh -c 'echo "<map><string name=\"email\">review@local</string><string name=\"token\">review</string><string name=\"refresh\"></string><string name=\"role\">admin</string><string name=\"name\">Ahmed</string><string name=\"login_phone\">01000000000</string></map>" > shared_prefs/eco_waste_phone_session.xml'
+            adb shell run-as com.ahmed.yawmeyaty sh -c 'mkdir -p /data/data/com.ahmed.yawmeyaty/shared_prefs && echo "<map><string name=\"email\">review@local</string><string name=\"token\">review</string><string name=\"refresh\"></string><string name=\"role\">admin</string><string name=\"name\">Ahmed</string><string name=\"login_phone\">01000000000</string></map>" > /data/data/com.ahmed.yawmeyaty/shared_prefs/eco_waste_phone_session.xml'
             adb shell am force-stop com.ahmed.yawmeyaty
             adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee dashboard-start.txt
             sleep 2
