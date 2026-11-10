@@ -35,14 +35,17 @@ jobs:
 
       - name: Build signed Release APK
         run: |
+          set -o pipefail
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleRelease 2>&1 | tee build-log.txt
 
       - name: Verify version and permanent signing key
         run: |
           APK="app/build/outputs/apk/release/app-release.apk"
-          apksigner verify --verbose --print-certs "$APK" | tee v433-signature.txt
-          apksigner verify --verbose --print-certs "releases/Eco-Waste-v4.3.2.apk" | tee v432-signature.txt
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
+          AAPT="$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee v433-signature.txt
+          "$APKSIGNER" verify --verbose --print-certs "releases/Eco-Waste-v4.3.2.apk" | tee v432-signature.txt
 
           NEW_CERT=$(grep -m1 "Signer #1 certificate SHA-256 digest:" v433-signature.txt | sed 's/.*digest: //')
           OLD_CERT=$(grep -m1 "Signer #1 certificate SHA-256 digest:" v432-signature.txt | sed 's/.*digest: //')
@@ -50,7 +53,7 @@ jobs:
           echo "v4.3.2 signer: $OLD_CERT"
           test "$NEW_CERT" = "$OLD_CERT"
 
-          aapt dump badging "$APK" | tee apk-badging.txt
+          "$AAPT" dump badging "$APK" | tee apk-badging.txt
           grep -q "versionCode='17'" apk-badging.txt
           grep -q "versionName='4.3.3'" apk-badging.txt
 
