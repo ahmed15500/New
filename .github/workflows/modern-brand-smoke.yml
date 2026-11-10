@@ -1,4 +1,4 @@
-name: Eco Waste Modern Brand Smoke Test
+name: Eco Waste v4.3.3 SADEEM Review Screenshots
 
 on:
   pull_request:
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  modern-launch:
+  review-screens:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout source
@@ -30,7 +30,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Build and launch modern Eco Waste on Android 10
+      - name: Build and capture real app screens on Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -39,34 +39,72 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
+            set -e
             chmod +x gradlew
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb logcat -c
-            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity | tee activity-start.txt
-            sleep 10
-            adb shell dumpsys activity activities | grep -E "EcoWaste(UpdateGate|Modern)Activity" | head -20 | tee foreground-activity.txt || true
-            adb logcat -d > app-launch-logcat.txt
-            adb exec-out screencap -p > modern-brand-screen.png
 
-      - name: Verify modern app launch
+            # Real built app icon as rendered by Android App Info.
+            adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.ahmed.yawmeyaty
+            sleep 2
+            adb exec-out screencap -p > 01-app-icon.png
+
+            # Real launch/splash frame.
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null &
+            sleep 0.12
+            adb exec-out screencap -p > 02-splash.png
+
+            # Real login screen.
+            adb shell pm clear com.ahmed.yawmeyaty
+            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity | tee activity-start.txt
+            sleep 6
+            adb exec-out screencap -p > 03-login.png
+
+            # Seed only local debug SharedPreferences to render the actual dashboard UI.
+            cat > session.xml <<'EOF'
+            <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+            <map>
+                <string name="email">review@ecowaste.local</string>
+                <string name="token">review-token</string>
+                <string name="refresh"></string>
+                <string name="role">admin</string>
+                <string name="name">أحمد</string>
+                <string name="login_phone">01000000000</string>
+            </map>
+            EOF
+            adb push session.xml /data/local/tmp/session.xml >/dev/null
+            adb shell run-as com.ahmed.yawmeyaty sh -c 'mkdir -p shared_prefs && cp /data/local/tmp/session.xml shared_prefs/eco_waste_phone_session.xml'
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity
+            sleep 6
+            adb exec-out screencap -p > 04-dashboard.png
+
+            adb logcat -d > app-launch-logcat.txt
+
+      - name: Verify launch and no crash
         run: |
           grep -q "Status: ok" activity-start.txt
           if grep -q "FATAL EXCEPTION" app-launch-logcat.txt; then
             grep -A120 -B30 -E "FATAL EXCEPTION|AndroidRuntime|Process: com.ahmed.yawmeyaty" app-launch-logcat.txt || true
             exit 1
           fi
-          grep -Eq "EcoWaste(UpdateGate|Modern)Activity" foreground-activity.txt
+          test -s 01-app-icon.png
+          test -s 02-splash.png
+          test -s 03-login.png
+          test -s 04-dashboard.png
 
-      - name: Upload launch evidence
+      - name: Upload real review screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Eco-Waste-4.3.0-Modern-Launch-Evidence
+          name: Eco-Waste-v4.3.3-Real-Screenshots
           path: |
+            01-app-icon.png
+            02-splash.png
+            03-login.png
+            04-dashboard.png
             activity-start.txt
-            foreground-activity.txt
             app-launch-logcat.txt
-            modern-brand-screen.png
-          if-no-files-found: warn
-          retention-days: 14
+          if-no-files-found: error
+          retention-days: 30
