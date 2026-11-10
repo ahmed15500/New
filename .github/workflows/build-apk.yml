@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, review/v4.3.3-sadeem-branding ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
