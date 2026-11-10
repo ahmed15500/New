@@ -60,6 +60,14 @@ jobs:
             sleep 6
             adb shell dumpsys activity activities | grep -E "EcoWaste(UpdateGate|Modern)Activity" | head -20 | tee foreground-activity.txt || true
             adb exec-out screencap -p > 03-login.png
+
+            adb shell run-as com.ahmed.yawmeyaty mkdir -p shared_prefs
+            adb shell run-as com.ahmed.yawmeyaty sh -c 'echo "<map><string name=\"email\">review@local</string><string name=\"token\">review</string><string name=\"refresh\"></string><string name=\"role\">admin</string><string name=\"name\">Ahmed</string><string name=\"login_phone\">01000000000</string></map>" > shared_prefs/eco_waste_phone_session.xml'
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee dashboard-start.txt
+            sleep 2
+            adb exec-out screencap -p > 04-dashboard.png
+
             adb logcat -d > app-launch-logcat.txt
 
       - name: Verify modern app launch
@@ -83,5 +91,7 @@ jobs:
             01-app-icon.png
             02-splash.png
             03-login.png
+            04-dashboard.png
+            dashboard-start.txt
           if-no-files-found: warn
           retention-days: 14
