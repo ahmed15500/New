@@ -45,11 +45,22 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
+
+            adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.ahmed.yawmeyaty
+            sleep 2
+            adb exec-out screencap -p > 01-app-icon.png
+
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null &
+            sleep 0.10
+            adb exec-out screencap -p > 02-splash.png
+
+            adb shell pm clear com.ahmed.yawmeyaty >/dev/null
             adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity | tee activity-start.txt
-            sleep 10
+            sleep 6
             adb shell dumpsys activity activities | grep -E "EcoWaste(UpdateGate|Modern)Activity" | head -20 | tee foreground-activity.txt || true
+            adb exec-out screencap -p > 03-login.png
             adb logcat -d > app-launch-logcat.txt
-            adb exec-out screencap -p > modern-brand-screen.png
 
       - name: Verify modern app launch
         run: |
@@ -64,11 +75,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Eco-Waste-4.3.0-Modern-Launch-Evidence
+          name: Eco-Waste-v4.3.3-Real-Screens-Part1
           path: |
             activity-start.txt
             foreground-activity.txt
             app-launch-logcat.txt
-            modern-brand-screen.png
+            01-app-icon.png
+            02-splash.png
+            03-login.png
           if-no-files-found: warn
           retention-days: 14
