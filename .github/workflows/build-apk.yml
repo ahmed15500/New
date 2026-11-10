@@ -2,9 +2,9 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ review/v432-ci-base ]
   pull_request:
-    branches: [ main ]
+    branches: [ review/v432-ci-base ]
   workflow_dispatch:
 
 permissions:
