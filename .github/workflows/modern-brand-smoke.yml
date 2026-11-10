@@ -1,6 +1,8 @@
 name: Eco Waste v4.3.3 SADEEM Review Screenshots
 
 on:
+  push:
+    branches: [ review/v4.3.3-sadeem-branding ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
