@@ -42,6 +42,8 @@ jobs:
           disable-animations: true
           script: |
             chmod +x gradlew
+            mkdir -p app/src/debug
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application><activity android:name=".EcoWasteModernActivity" android:exported="true"/></application></manifest>' > app/src/debug/AndroidManifest.xml
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
@@ -61,7 +63,11 @@ jobs:
             adb shell dumpsys activity activities | grep -E "EcoWaste(UpdateGate|Modern)Activity" | head -20 | tee foreground-activity.txt || true
             adb exec-out screencap -p > 03-login.png
 
-            adb shell run-as com.ahmed.yawmeyaty sh -c 'mkdir -p /data/data/com.ahmed.yawmeyaty/shared_prefs && echo "<map><string name=\"email\">review@local</string><string name=\"token\">review</string><string name=\"refresh\"></string><string name=\"role\">admin</string><string name=\"name\">Ahmed</string><string name=\"login_phone\">01000000000</string></map>" > /data/data/com.ahmed.yawmeyaty/shared_prefs/eco_waste_phone_session.xml'
+            printf '%s\n' '<map><string name="email">review@local</string><string name="token">review</string><string name="refresh"></string><string name="role">admin</string><string name="name">Ahmed</string><string name="login_phone">01000000000</string></map>' > session.xml
+            adb push session.xml /data/local/tmp/session.xml >/dev/null
+            adb shell chmod 644 /data/local/tmp/session.xml
+            adb shell run-as com.ahmed.yawmeyaty mkdir -p /data/data/com.ahmed.yawmeyaty/shared_prefs
+            adb shell run-as com.ahmed.yawmeyaty cp /data/local/tmp/session.xml /data/data/com.ahmed.yawmeyaty/shared_prefs/eco_waste_phone_session.xml
             adb shell am force-stop com.ahmed.yawmeyaty
             adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee dashboard-start.txt
             sleep 2
