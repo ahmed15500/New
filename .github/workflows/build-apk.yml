@@ -101,23 +101,23 @@ jobs:
 
       - name: Rename APK
         if: success()
-        run: cp app/build/outputs/apk/release/app-release.apk Eco-Waste-v4.3.2-Stable-Signed.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Eco-Waste-v4.3.3-SADEEM-Staged.apk
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Eco-Waste-APK
-          path: Eco-Waste-v4.3.2-Stable-Signed.apk
+          path: Eco-Waste-v4.3.3-SADEEM-Staged.apk
           if-no-files-found: error
           retention-days: 90
 
       - name: Publish stable APK link
-        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: false
         run: |
           mkdir -p releases
-          cp Eco-Waste-v4.3.2-Stable-Signed.apk releases/Eco-Waste-latest.apk
-          cp Eco-Waste-v4.3.2-Stable-Signed.apk releases/Eco-Waste-v4.3.2.apk
+          cp Eco-Waste-v4.3.3-SADEEM-Staged.apk releases/Eco-Waste-latest.apk
+          cp Eco-Waste-v4.3.3-SADEEM-Staged.apk releases/Eco-Waste-v4.3.2.apk
           git config user.name "Eco Waste Release Bot"
           git config user.email "actions@github.com"
           git add releases/Eco-Waste-latest.apk releases/Eco-Waste-v4.3.2.apk
