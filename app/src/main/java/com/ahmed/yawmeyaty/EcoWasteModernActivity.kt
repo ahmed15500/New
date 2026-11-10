@@ -650,8 +650,8 @@ private fun BrandLogo(modifier: Modifier = Modifier) {
         color = Color.Transparent
     ) {
         androidx.compose.foundation.Image(
-            painter = painterResource(R.drawable.ic_ecowaste_brand),
-            contentDescription = "شعار إيكو ويست",
+            painter = painterResource(R.drawable.sadeem_logo),
+            contentDescription = "شعار سديم",
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -674,9 +674,9 @@ private fun ModernLoginScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0xFFE9F8F1),
+                        Color(0xFFF8F5EF),
                         MaterialTheme.colorScheme.background,
-                        Color(0xFFFDF8EC)
+                        Color(0xFFF3EDE7)
                     )
                 )
             )
@@ -692,8 +692,8 @@ private fun ModernLoginScreen(
             BrandLogo(Modifier.size(112.dp))
             Spacer(Modifier.height(18.dp))
             Text(
-                "إيكو ويست",
-                style = MaterialTheme.typography.headlineLarge,
+                "EcoWaste by SADEEM / سديم",
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -823,7 +823,7 @@ private fun ModernHomeScreen(
                         .fillMaxWidth()
                         .background(
                             Brush.linearGradient(
-                                listOf(Color(0xFF063C3B), Color(0xFF0B6A58), Color(0xFF0C8A61))
+                                listOf(Color(0xFF3D5A76), Color(0xFF496B88), Color(0xFF314B63))
                             )
                         )
                         .padding(20.dp)
@@ -832,7 +832,7 @@ private fun ModernHomeScreen(
                         BrandLogo(Modifier.size(76.dp))
                         Spacer(Modifier.size(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("مرحبًا،", color = Color(0xFFBDF5D8))
+                            Text("EcoWaste by SADEEM / سديم", color = Color(0xFFF8F5EF), fontWeight = FontWeight.Black)
                             Text(
                                 session.displayName,
                                 style = MaterialTheme.typography.headlineSmall,
@@ -841,7 +841,7 @@ private fun ModernHomeScreen(
                             )
                             Text(
                                 if (session.isAdmin) "مدير النظام" else "مسؤول ميداني",
-                                color = Color(0xFFF6D58A),
+                                color = Color(0xFFCE8B5F),
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -860,7 +860,7 @@ private fun ModernHomeScreen(
                 title = "المشتركين والاشتراكات",
                 description = "ابحث بالاسم أو رقم التليفون وتابع حالة اشتراك الشهر الحالي.",
                 buttonText = "فتح سجل المشتركين",
-                accent = Color(0xFF087A5B),
+                accent = Color(0xFF3D5A76),
                 onClick = onOpenSubscribers
             )
         }
@@ -883,7 +883,7 @@ private fun ModernHomeScreen(
                     title = "إدارة مستخدمي التطبيق",
                     description = "أضف أدمن أو مسؤولًا ميدانيًا برقم التليفون وكلمة المرور.",
                     buttonText = "إضافة مستخدم جديد",
-                    accent = Color(0xFFC08B24),
+                    accent = Color(0xFFCE8B5F),
                     onClick = onAddUser
                 )
             }
@@ -1023,7 +1023,7 @@ private fun ModernSubscribersScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Brush.linearGradient(listOf(Color(0xFF063C3B), Color(0xFF0B765C))))
+                            .background(Brush.linearGradient(listOf(Color(0xFF3D5A76), Color(0xFF314B63))))
                             .padding(16.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1031,8 +1031,8 @@ private fun ModernSubscribersScreen(
                             Spacer(Modifier.size(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("اشتراكات ${currentMonthLabel()}", color = Color.White, fontWeight = FontWeight.Black)
-                                Text("إجمالي الأسماء: ${customers.size}", color = Color(0xFFCEF4E2))
-                                Text("مشترك حاليًا: $activeCount", color = Color(0xFFF6D58A), fontWeight = FontWeight.Bold)
+                                Text("إجمالي الأسماء: ${customers.size}", color = Color(0xFFDDE6EE))
+                                Text("مشترك حاليًا: $activeCount", color = Color(0xFFCE8B5F), fontWeight = FontWeight.Bold)
                             }
                         }
                     }
