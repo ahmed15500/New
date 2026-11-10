@@ -1,0 +1,87 @@
+name: v4.3.3 Real Screenshots
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build debug and capture screens
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            chmod +x gradlew
+            ./gradlew --no-daemon assembleDebug
+            adb install app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -W -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.ahmed.yawmeyaty >/dev/null
+            sleep 2
+            adb exec-out screencap -p > real-icon-app-info.png
+            adb shell am force-stop com.ahmed.yawmeyaty
+            (adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null 2>&1 &)
+            mkdir -p splash-frames
+            for i in $(seq -w 1 20); do adb exec-out screencap -p > "splash-frames/splash-$i.png" || true; sleep 0.05; done
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell run-as com.ahmed.yawmeyaty rm -f shared_prefs/eco_waste_phone_session.xml || true
+            adb shell run-as com.ahmed.yawmeyaty am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity >/dev/null
+            sleep 2
+            adb exec-out screencap -p > real-login.png
+            mkdir -p testprefs
+            cat > testprefs/eco_waste_phone_session.xml <<'EOF'
+            <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+            <map>
+              <string name="email">review@local</string>
+              <string name="token">review</string>
+              <string name="refresh"></string>
+              <string name="role">admin</string>
+              <string name="name">مراجعة الهوية</string>
+              <string name="login_phone">01000000000</string>
+            </map>
+            EOF
+            adb push testprefs/eco_waste_phone_session.xml /data/local/tmp/eco_waste_phone_session.xml
+            adb shell run-as com.ahmed.yawmeyaty mkdir -p shared_prefs
+            adb shell run-as com.ahmed.yawmeyaty cp /data/local/tmp/eco_waste_phone_session.xml shared_prefs/eco_waste_phone_session.xml
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell run-as com.ahmed.yawmeyaty am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity >/dev/null
+            sleep 2
+            adb exec-out screencap -p > real-dashboard.png
+            adb logcat -d > screenshot-logcat.txt
+      - name: Verify screenshots
+        run: |
+          test -s real-icon-app-info.png
+          test -s real-login.png
+          test -s real-dashboard.png
+          if grep -q "FATAL EXCEPTION" screenshot-logcat.txt; then exit 1; fi
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eco-Waste-v4.3.3-Real-Screenshots
+          path: |
+            real-icon-app-info.png
+            splash-frames/
+            real-login.png
+            real-dashboard.png
+            screenshot-logcat.txt
+          if-no-files-found: error
+          retention-days: 30
