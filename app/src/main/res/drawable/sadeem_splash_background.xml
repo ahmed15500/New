@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#F8F5EF"/>
+        </shape>
+    </item>
+    <item
+        android:width="220dp"
+        android:height="220dp"
+        android:gravity="center"
+        android:drawable="@drawable/sadeem_logo"/>
+</layer-list>
