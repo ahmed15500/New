@@ -4,7 +4,7 @@ on:
   push:
     branches: [ review/v4.3.3-sadeem-branding ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, review/v432-ci-base ]
   workflow_dispatch:
 
 permissions:
