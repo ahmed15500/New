@@ -14,8 +14,10 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout source
+      - name: Checkout exact v4.3.3 review branch
         uses: actions/checkout@v4
+        with:
+          ref: review/v4.3.3-sadeem-branding
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -40,14 +42,38 @@ jobs:
           disable-animations: true
           script: |
             chmod +x gradlew
+            mkdir -p app/src/debug
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application><activity android:name=".EcoWasteModernActivity" android:exported="true"/></application></manifest>' > app/src/debug/AndroidManifest.xml
             ./gradlew --no-daemon assembleDebug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity | tee activity-start.txt
-            sleep 10
+
+            adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.ahmed.yawmeyaty
+            sleep 2
+            adb exec-out screencap -p > 01-app-icon.png
+
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell am start -n com.ahmed.yawmeyaty/.EcoWasteUpdateGateActivity >/dev/null &
+            sleep 0.10
+            adb exec-out screencap -p > 02-splash.png
+
+            adb shell pm clear com.ahmed.yawmeyaty >/dev/null
+            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee activity-start.txt
+            sleep 6
             adb shell dumpsys activity activities | grep -E "EcoWaste(UpdateGate|Modern)Activity" | head -20 | tee foreground-activity.txt || true
+            adb exec-out screencap -p > 03-login.png
+
+            printf '%s\n' '<map><string name="email">review@local</string><string name="token">review</string><string name="refresh"></string><string name="role">admin</string><string name="name">Ahmed</string><string name="login_phone">01000000000</string></map>' > session.xml
+            adb push session.xml /data/local/tmp/session.xml >/dev/null
+            adb shell chmod 644 /data/local/tmp/session.xml
+            adb shell run-as com.ahmed.yawmeyaty mkdir -p /data/data/com.ahmed.yawmeyaty/shared_prefs
+            adb shell run-as com.ahmed.yawmeyaty cp /data/local/tmp/session.xml /data/data/com.ahmed.yawmeyaty/shared_prefs/eco_waste_phone_session.xml
+            adb shell am force-stop com.ahmed.yawmeyaty
+            adb shell am start -W -n com.ahmed.yawmeyaty/.EcoWasteModernActivity | tee dashboard-start.txt
+            sleep 2
+            adb exec-out screencap -p > 04-dashboard.png
+
             adb logcat -d > app-launch-logcat.txt
-            adb exec-out screencap -p > modern-brand-screen.png
 
       - name: Verify modern app launch
         run: |
@@ -62,11 +88,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Eco-Waste-4.3.0-Modern-Launch-Evidence
+          name: Eco-Waste-v4.3.3-Real-Screens-Part1
           path: |
             activity-start.txt
             foreground-activity.txt
             app-launch-logcat.txt
-            modern-brand-screen.png
+            01-app-icon.png
+            02-splash.png
+            03-login.png
+            04-dashboard.png
+            dashboard-start.txt
           if-no-files-found: warn
           retention-days: 14
