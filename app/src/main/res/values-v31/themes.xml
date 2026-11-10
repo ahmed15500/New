@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Yawmeyaty" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">#F8F5EF</item>
+        <item name="android:navigationBarColor">#F8F5EF</item>
+        <item name="android:windowBackground">@drawable/sadeem_splash_background</item>
+        <item name="android:windowSplashScreenBackground">#F8F5EF</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/sadeem_logo</item>
+        <item name="android:colorAccent">#3D5A76</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>
