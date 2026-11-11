@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -65,9 +67,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -75,7 +80,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+
 import com.ahmed.yawmeyaty.ui.theme.YawmeyatyTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -536,16 +541,39 @@ private fun PhoneLoginScreen(
     var showPassword by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFFF8F5EF),
+                        MaterialTheme.colorScheme.background,
+                        Color(0xFFF3EDE7)
+                    )
+                )
+            )
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("♻️", fontSize = 72.sp)
+        Surface(
+            modifier = Modifier.size(112.dp).shadow(14.dp, RoundedCornerShape(28.dp)),
+            shape = RoundedCornerShape(28.dp),
+            color = Color.Transparent
+        ) {
+            Image(
+                painter = painterResource(R.drawable.sadeem_logo),
+                contentDescription = "شعار سديم",
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        Spacer(Modifier.height(18.dp))
         Text(
-            text = "إيكو ويست",
-            style = MaterialTheme.typography.headlineLarge,
+            text = "EcoWaste by SADEEM / سديم",
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.secondary
         )
         Text(
             text = "متابعة اشتراكات جمع المخلفات",
