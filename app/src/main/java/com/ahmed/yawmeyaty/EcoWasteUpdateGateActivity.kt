@@ -141,7 +141,7 @@ private fun UpdateGateScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFE8F8F0), MaterialTheme.colorScheme.background, Color(0xFFFFF8E7))
+                    listOf(Color(0xFFF8F5EF), MaterialTheme.colorScheme.background, Color(0xFFF3EDE7))
                 )
             )
     ) {
@@ -151,14 +151,14 @@ private fun UpdateGateScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             androidx.compose.foundation.Image(
-                painter = painterResource(R.drawable.ic_ecowaste_brand),
+                painter = painterResource(R.drawable.sadeem_logo),
                 contentDescription = null,
                 modifier = Modifier.size(108.dp)
             )
             Spacer(Modifier.height(18.dp))
             Text(
-                "إيكو ويست",
-                style = MaterialTheme.typography.headlineMedium,
+                "EcoWaste by SADEEM / سديم",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.secondary
             )
